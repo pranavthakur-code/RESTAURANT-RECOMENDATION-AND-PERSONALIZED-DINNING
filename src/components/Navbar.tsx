@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { MapPin, Menu, X, Award, ShoppingBag } from "lucide-react";
+import { MapPin, Menu, X, Award, ShoppingBag, LogOut } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "@/contexts/AuthContext";
 
 const navLinks = [
   { to: "/", label: "Home" },
@@ -14,6 +15,7 @@ const navLinks = [
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
+  const { user, profile, signOut } = useAuth();
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
@@ -44,13 +46,26 @@ const Navbar = () => {
         <div className="hidden md:flex items-center gap-3">
           <div className="flex items-center gap-1.5 text-sm text-muted-foreground bg-secondary px-3 py-1.5 rounded-full">
             <MapPin className="w-3.5 h-3.5 text-primary" />
-            <span>New Delhi</span>
+            <span>{profile?.location || "New Delhi"}</span>
           </div>
-          <div className="flex items-center gap-1.5 text-sm bg-loyalty/10 text-loyalty px-3 py-1.5 rounded-full font-medium">
-            <Award className="w-3.5 h-3.5" />
-            <span>50 pts</span>
-          </div>
-          <Button variant="hero" size="sm">Sign Up</Button>
+          {user && (
+            <Link to="/loyalty" className="flex items-center gap-1.5 text-sm bg-loyalty/10 text-loyalty px-3 py-1.5 rounded-full font-medium">
+              <Award className="w-3.5 h-3.5" />
+              <span>{profile?.loyalty_points ?? 0} pts</span>
+            </Link>
+          )}
+          {user ? (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">{profile?.full_name || user.email?.split("@")[0]}</span>
+              <Button variant="ghost" size="icon" onClick={signOut}>
+                <LogOut className="w-4 h-4" />
+              </Button>
+            </div>
+          ) : (
+            <Link to="/auth">
+              <Button variant="hero" size="sm">Sign Up</Button>
+            </Link>
+          )}
         </div>
 
         <button className="md:hidden text-foreground" onClick={() => setMobileOpen(!mobileOpen)}>
@@ -81,7 +96,15 @@ const Navbar = () => {
                   {link.label}
                 </Link>
               ))}
-              <Button variant="hero" className="mt-2">Sign Up</Button>
+              {user ? (
+                <Button variant="ghost" onClick={signOut} className="mt-2 justify-start">
+                  <LogOut className="w-4 h-4 mr-2" /> Sign Out
+                </Button>
+              ) : (
+                <Link to="/auth" onClick={() => setMobileOpen(false)}>
+                  <Button variant="hero" className="mt-2 w-full">Sign Up</Button>
+                </Link>
+              )}
             </div>
           </motion.div>
         )}
