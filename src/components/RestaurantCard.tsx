@@ -1,4 +1,4 @@
-import { Star, Clock, Award } from "lucide-react";
+import { Star, Clock, Award, MapPin } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface RestaurantCardProps {
@@ -9,10 +9,11 @@ interface RestaurantCardProps {
   image: string;
   loyaltyPoints: number;
   priceRange: string;
+  location?: string;
   featured?: boolean;
 }
 
-const RestaurantCard = ({ name, cuisine, rating, deliveryTime, image, loyaltyPoints, priceRange, featured }: RestaurantCardProps) => {
+const RestaurantCard = ({ name, cuisine, rating, deliveryTime, image, loyaltyPoints, priceRange, location, featured }: RestaurantCardProps) => {
   return (
     <motion.div
       whileHover={{ y: -6 }}
@@ -38,12 +39,18 @@ const RestaurantCard = ({ name, cuisine, rating, deliveryTime, image, loyaltyPoi
       </div>
       <div className="p-4">
         <h3 className="font-display font-semibold text-foreground mb-1">{name}</h3>
-        <p className="text-sm text-muted-foreground mb-3">{cuisine} · {priceRange}</p>
+        <p className="text-sm text-muted-foreground mb-2">{cuisine} · {priceRange}</p>
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <span className="flex items-center gap-1">
             <Clock className="w-3.5 h-3.5" />
             {deliveryTime}
           </span>
+          {location && (
+            <span className="flex items-center gap-1">
+              <MapPin className="w-3.5 h-3.5" />
+              {location}
+            </span>
+          )}
         </div>
       </div>
     </motion.div>

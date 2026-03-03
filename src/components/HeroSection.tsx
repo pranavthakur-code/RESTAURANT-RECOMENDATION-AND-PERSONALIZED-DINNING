@@ -2,9 +2,21 @@ import { Button } from "@/components/ui/button";
 import { Search, MapPin } from "lucide-react";
 import { motion } from "framer-motion";
 import heroFood from "@/assets/hero-food.jpg";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useState } from "react";
 
 const HeroSection = () => {
+  const navigate = useNavigate();
+  const [location, setLocation] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const handleSearch = () => {
+    const params = new URLSearchParams();
+    if (location) params.set("location", location);
+    if (searchQuery) params.set("search", searchQuery);
+    navigate(`/restaurants?${params.toString()}`);
+  };
+
   return (
     <section className="relative min-h-[90vh] flex items-center overflow-hidden">
       {/* Background image */}
@@ -44,7 +56,10 @@ const HeroSection = () => {
               <MapPin className="w-5 h-5 text-primary shrink-0" />
               <input
                 type="text"
-                placeholder="Enter your location..."
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                placeholder="Enter your location (Delhi, Mumbai, Jaipur...)"
                 className="bg-transparent text-foreground placeholder:text-muted-foreground outline-none w-full text-sm"
               />
             </div>
@@ -52,6 +67,9 @@ const HeroSection = () => {
               <Search className="w-5 h-5 text-muted-foreground shrink-0" />
               <input
                 type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                 placeholder="Search restaurants or dishes..."
                 className="bg-transparent text-foreground placeholder:text-muted-foreground outline-none w-full text-sm"
               />
@@ -64,9 +82,7 @@ const HeroSection = () => {
             transition={{ delay: 0.5 }}
             className="flex gap-3"
           >
-            <Link to="/restaurants">
-              <Button variant="hero" size="lg">Order Now</Button>
-            </Link>
+            <Button variant="hero" size="lg" onClick={handleSearch}>Order Now</Button>
             <Link to="/dineout">
               <Button variant="outline" size="lg">Book a Table</Button>
             </Link>

@@ -4,43 +4,10 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 
 const restaurants = [
-  {
-    name: "The Royal Kitchen",
-    cuisine: "North Indian",
-    rating: 4.6,
-    deliveryTime: "30-40 min",
-    image: "https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=400&h=300&fit=crop",
-    loyaltyPoints: 15,
-    priceRange: "₹₹",
-    featured: true,
-  },
-  {
-    name: "Pizza Paradise",
-    cuisine: "Italian",
-    rating: 4.4,
-    deliveryTime: "25-35 min",
-    image: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&h=300&fit=crop",
-    loyaltyPoints: 12,
-    priceRange: "₹₹",
-  },
-  {
-    name: "Sushi Master",
-    cuisine: "Japanese",
-    rating: 4.8,
-    deliveryTime: "35-45 min",
-    image: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=400&h=300&fit=crop",
-    loyaltyPoints: 20,
-    priceRange: "₹₹₹",
-  },
-  {
-    name: "Burger Barn",
-    cuisine: "American Fast Food",
-    rating: 4.2,
-    deliveryTime: "20-30 min",
-    image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=300&fit=crop",
-    loyaltyPoints: 10,
-    priceRange: "₹",
-  },
+  { name: "The Royal Kitchen", cuisine: "North Indian", rating: 4.6, deliveryTime: "30-40 min", image: "https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=400&h=300&fit=crop", loyaltyPoints: 15, priceRange: "₹₹", location: "Connaught Place, Delhi", featured: true },
+  { name: "Pizza Paradise", cuisine: "Italian", rating: 4.4, deliveryTime: "25-35 min", image: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&h=300&fit=crop", loyaltyPoints: 12, priceRange: "₹₹", location: "Bandra, Mumbai" },
+  { name: "Paradise Biryani", cuisine: "Hyderabadi Biryani", rating: 4.8, deliveryTime: "30-40 min", image: "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=400&h=300&fit=crop", loyaltyPoints: 20, priceRange: "₹₹", location: "Secunderabad, Hyderabad" },
+  { name: "MTR", cuisine: "South Indian", rating: 4.7, deliveryTime: "25-35 min", image: "https://images.unsplash.com/photo-1630383249896-424e482df921?w=400&h=300&fit=crop", loyaltyPoints: 14, priceRange: "₹", location: "Lalbagh, Bangalore" },
 ];
 
 const FeaturedRestaurants = () => {
