@@ -2,15 +2,11 @@ import RestaurantCard from "./RestaurantCard";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
-
-const restaurants = [
-  { name: "The Royal Kitchen", cuisine: "North Indian", rating: 4.6, deliveryTime: "30-40 min", image: "https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=400&h=300&fit=crop", loyaltyPoints: 15, priceRange: "₹₹", location: "Connaught Place, Delhi", featured: true },
-  { name: "Pizza Paradise", cuisine: "Italian", rating: 4.4, deliveryTime: "25-35 min", image: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&h=300&fit=crop", loyaltyPoints: 12, priceRange: "₹₹", location: "Bandra, Mumbai" },
-  { name: "Paradise Biryani", cuisine: "Hyderabadi Biryani", rating: 4.8, deliveryTime: "30-40 min", image: "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=400&h=300&fit=crop", loyaltyPoints: 20, priceRange: "₹₹", location: "Secunderabad, Hyderabad" },
-  { name: "MTR", cuisine: "South Indian", rating: 4.7, deliveryTime: "25-35 min", image: "https://images.unsplash.com/photo-1630383249896-424e482df921?w=400&h=300&fit=crop", loyaltyPoints: 14, priceRange: "₹", location: "Lalbagh, Bangalore" },
-];
+import { allRestaurants } from "@/data/restaurants";
 
 const FeaturedRestaurants = () => {
+  const featured = allRestaurants.slice(0, 4);
+
   return (
     <section className="py-16">
       <div className="container mx-auto px-4">
@@ -23,8 +19,8 @@ const FeaturedRestaurants = () => {
           </Link>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {restaurants.map((r) => (
-            <RestaurantCard key={r.name} {...r} />
+          {featured.map((r) => (
+            <RestaurantCard key={r.slug} slug={r.slug} name={r.name} cuisine={r.cuisine} rating={r.rating} deliveryTime={r.deliveryTime} image={r.image} loyaltyPoints={r.loyaltyPoints} priceRange={r.priceRange} location={r.location} featured={r.featured} />
           ))}
         </div>
       </div>
