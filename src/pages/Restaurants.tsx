@@ -4,14 +4,17 @@ import ChatBot from "@/components/ChatBot";
 import CartDrawer from "@/components/CartDrawer";
 import RestaurantCard from "@/components/RestaurantCard";
 import { allRestaurants } from "@/data/restaurants";
-import { Search, MapPin } from "lucide-react";
-import { useState } from "react";
+import { Search, MapPin, Star } from "lucide-react";
+import { useState, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Restaurants = () => {
   const [searchParams] = useSearchParams();
+  const { profile } = useAuth();
+  const userCity = profile?.location || "";
   const [search, setSearch] = useState(searchParams.get("search") || "");
-  const [locationFilter, setLocationFilter] = useState(searchParams.get("location") || "");
+  const [locationFilter, setLocationFilter] = useState(searchParams.get("location") || userCity);
 
   const filtered = allRestaurants.filter((r) => {
     const matchesSearch = !search || r.name.toLowerCase().includes(search.toLowerCase()) || r.cuisine.toLowerCase().includes(search.toLowerCase());
