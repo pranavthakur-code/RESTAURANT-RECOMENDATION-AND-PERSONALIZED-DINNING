@@ -60,7 +60,7 @@ const Restaurants = () => {
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {filtered.map((r) => (
+            {sorted.map((r) => (
               <RestaurantCard key={r.slug} slug={r.slug} name={r.name} cuisine={r.cuisine} rating={r.rating} deliveryTime={r.deliveryTime} image={r.image} loyaltyPoints={r.loyaltyPoints} priceRange={r.priceRange} location={r.location} featured={r.featured} />
             ))}
           </div>
