@@ -8,11 +8,14 @@ import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 
+const cities = ["Delhi", "Mumbai", "Bangalore", "Jaipur", "Kolkata", "Hyderabad"];
+
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [selectedCity, setSelectedCity] = useState("Delhi");
   const [loading, setLoading] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
   const navigate = useNavigate();
