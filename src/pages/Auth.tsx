@@ -3,16 +3,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ShoppingBag, Mail, Lock, User, ArrowLeft } from "lucide-react";
+import { ShoppingBag, Mail, Lock, User, ArrowLeft, MapPin } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+
+const cities = ["Delhi", "Mumbai", "Bangalore", "Jaipur", "Kolkata", "Hyderabad"];
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [selectedCity, setSelectedCity] = useState("Delhi");
   const [loading, setLoading] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
   const navigate = useNavigate();
@@ -34,7 +37,7 @@ const Auth = () => {
         email,
         password,
         options: {
-          data: { full_name: fullName },
+          data: { full_name: fullName, location: selectedCity },
           emailRedirectTo: window.location.origin,
         },
       });
@@ -106,13 +109,31 @@ const Auth = () => {
         <div className="bg-card border border-border rounded-2xl p-8">
           <form onSubmit={handleAuth} className="space-y-4">
             {!isLogin && (
-              <div>
-                <Label htmlFor="name">Full Name</Label>
-                <div className="relative mt-1">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input id="name" value={fullName} onChange={(e) => setFullName(e.target.value)} className="pl-10" placeholder="John Doe" required />
+              <>
+                <div>
+                  <Label htmlFor="name">Full Name</Label>
+                  <div className="relative mt-1">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input id="name" value={fullName} onChange={(e) => setFullName(e.target.value)} className="pl-10" placeholder="John Doe" required />
+                  </div>
                 </div>
-              </div>
+                <div>
+                  <Label htmlFor="city">Your City</Label>
+                  <div className="relative mt-1">
+                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <select
+                      id="city"
+                      value={selectedCity}
+                      onChange={(e) => setSelectedCity(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 rounded-md border border-input bg-background text-foreground text-sm"
+                    >
+                      {cities.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </>
             )}
             <div>
               <Label htmlFor="email">Email</Label>
