@@ -12,6 +12,7 @@ import DineOut from "./pages/DineOut";
 import Loyalty from "./pages/Loyalty";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
+import Orders from "./pages/Orders";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
