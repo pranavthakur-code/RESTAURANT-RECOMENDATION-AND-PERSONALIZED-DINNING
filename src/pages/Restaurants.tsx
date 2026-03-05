@@ -64,7 +64,7 @@ const Restaurants = () => {
               <RestaurantCard key={r.slug} slug={r.slug} name={r.name} cuisine={r.cuisine} rating={r.rating} deliveryTime={r.deliveryTime} image={r.image} loyaltyPoints={r.loyaltyPoints} priceRange={r.priceRange} location={r.location} featured={r.featured} />
             ))}
           </div>
-          {filtered.length === 0 && (
+          {sorted.length === 0 && (
             <div className="text-center py-20 text-muted-foreground">
               No restaurants found {locationFilter && `in "${locationFilter}"`} {search && `matching "${search}"`}
             </div>
