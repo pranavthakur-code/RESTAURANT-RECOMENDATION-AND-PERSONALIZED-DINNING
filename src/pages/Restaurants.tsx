@@ -38,7 +38,9 @@ const Restaurants = () => {
       <div className="pt-24 pb-16">
         <div className="container mx-auto px-4">
           <h1 className="text-4xl font-display font-bold mb-2">Order Food</h1>
-          <p className="text-muted-foreground mb-8">Browse restaurants near you and earn loyalty points on every order</p>
+          <p className="text-muted-foreground mb-8">
+            {userCity ? `Showing popular restaurants near ${userCity}` : "Browse restaurants near you and earn loyalty points on every order"}
+          </p>
 
           <div className="flex flex-col sm:flex-row gap-3 mb-8">
             <div className="flex-1 flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-3">
