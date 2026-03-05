@@ -22,6 +22,16 @@ const Restaurants = () => {
     return matchesSearch && matchesLocation;
   });
 
+  // Sort: nearby (matching city) first, then by rating
+  const sorted = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      const aLocal = userCity && a.location.toLowerCase().includes(userCity.toLowerCase()) ? 1 : 0;
+      const bLocal = userCity && b.location.toLowerCase().includes(userCity.toLowerCase()) ? 1 : 0;
+      if (bLocal !== aLocal) return bLocal - aLocal;
+      return b.rating - a.rating;
+    });
+  }, [filtered, userCity]);
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
