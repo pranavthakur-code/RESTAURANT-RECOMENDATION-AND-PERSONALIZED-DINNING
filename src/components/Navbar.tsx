@@ -9,6 +9,7 @@ const navLinks = [
   { to: "/", label: "Home" },
   { to: "/restaurants", label: "Order Food" },
   { to: "/dineout", label: "DineOut" },
+  { to: "/orders", label: "My Orders" },
   { to: "/loyalty", label: "Loyalty" },
 ];
 
