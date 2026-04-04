@@ -31,8 +31,25 @@ const statusConfig: Record<string, { icon: React.ReactNode; color: string; label
 const Orders = () => {
   const { user, refreshProfile } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem("mealmatch_hidden_orders");
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch { return new Set(); }
+  });
   const [loading, setLoading] = useState(true);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+
+  const visibleOrders = orders.filter((o) => !hiddenIds.has(o.id));
+
+  const hideOrder = (id: string) => {
+    setHiddenIds((prev) => {
+      const next = new Set(prev).add(id);
+      localStorage.setItem("mealmatch_hidden_orders", JSON.stringify([...next]));
+      return next;
+    });
+    toast.success("Order hidden from list");
+  };
 
   useEffect(() => {
     if (user) fetchOrders();
