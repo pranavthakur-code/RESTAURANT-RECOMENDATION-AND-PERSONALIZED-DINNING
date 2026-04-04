@@ -125,7 +125,7 @@ const Orders = () => {
 
           {loading ? (
             <div className="text-center py-20 text-muted-foreground">Loading orders...</div>
-          ) : orders.length === 0 ? (
+          ) : visibleOrders.length === 0 ? (
             <div className="text-center py-20">
               <Package className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
               <p className="text-muted-foreground mb-4">No orders yet</p>
@@ -133,7 +133,7 @@ const Orders = () => {
             </div>
           ) : (
             <div className="space-y-4">
-              {orders.map((order, i) => {
+              {visibleOrders.map((order, i) => {
                 const sc = statusConfig[order.status] || statusConfig.pending;
                 return (
                   <motion.div
