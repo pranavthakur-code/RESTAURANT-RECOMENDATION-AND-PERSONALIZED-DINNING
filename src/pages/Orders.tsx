@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Package, Clock, CheckCircle, XCircle, Award } from "lucide-react";
+import { Package, Clock, CheckCircle, XCircle, Award, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 
@@ -31,8 +31,25 @@ const statusConfig: Record<string, { icon: React.ReactNode; color: string; label
 const Orders = () => {
   const { user, refreshProfile } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem("mealmatch_hidden_orders");
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch { return new Set(); }
+  });
   const [loading, setLoading] = useState(true);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+
+  const visibleOrders = orders.filter((o) => !hiddenIds.has(o.id));
+
+  const hideOrder = (id: string) => {
+    setHiddenIds((prev) => {
+      const next = new Set(prev).add(id);
+      localStorage.setItem("mealmatch_hidden_orders", JSON.stringify([...next]));
+      return next;
+    });
+    toast.success("Order hidden from list");
+  };
 
   useEffect(() => {
     if (user) fetchOrders();
@@ -108,7 +125,7 @@ const Orders = () => {
 
           {loading ? (
             <div className="text-center py-20 text-muted-foreground">Loading orders...</div>
-          ) : orders.length === 0 ? (
+          ) : visibleOrders.length === 0 ? (
             <div className="text-center py-20">
               <Package className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
               <p className="text-muted-foreground mb-4">No orders yet</p>
@@ -116,7 +133,7 @@ const Orders = () => {
             </div>
           ) : (
             <div className="space-y-4">
-              {orders.map((order, i) => {
+              {visibleOrders.map((order, i) => {
                 const sc = statusConfig[order.status] || statusConfig.pending;
                 return (
                   <motion.div
@@ -146,6 +163,14 @@ const Orders = () => {
                             {cancellingId === order.id ? "Cancelling..." : "Cancel Order"}
                           </Button>
                         )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-muted-foreground hover:text-foreground"
+                          onClick={() => hideOrder(order.id)}
+                        >
+                          <EyeOff className="w-4 h-4 mr-1" /> Hide
+                        </Button>
                       </div>
                     </div>
                     <div className="space-y-1 mb-3">
