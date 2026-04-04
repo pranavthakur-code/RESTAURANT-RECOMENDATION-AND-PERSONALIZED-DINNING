@@ -163,6 +163,14 @@ const Orders = () => {
                             {cancellingId === order.id ? "Cancelling..." : "Cancel Order"}
                           </Button>
                         )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-muted-foreground hover:text-foreground"
+                          onClick={() => hideOrder(order.id)}
+                        >
+                          <EyeOff className="w-4 h-4 mr-1" /> Hide
+                        </Button>
                       </div>
                     </div>
                     <div className="space-y-1 mb-3">
