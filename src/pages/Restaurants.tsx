@@ -17,7 +17,8 @@ const Restaurants = () => {
   const [locationFilter, setLocationFilter] = useState(searchParams.get("location") || userCity);
 
   const filtered = allRestaurants.filter((r) => {
-    const matchesSearch = !search || r.name.toLowerCase().includes(search.toLowerCase()) || r.cuisine.toLowerCase().includes(search.toLowerCase());
+    const s = search.toLowerCase();
+    const matchesSearch = !search || r.name.toLowerCase().includes(s) || r.cuisine.toLowerCase().includes(s) || r.menu.some((m) => m.name.toLowerCase().includes(s) || m.category.toLowerCase().includes(s));
     const matchesLocation = !locationFilter || r.location.toLowerCase().includes(locationFilter.toLowerCase());
     return matchesSearch && matchesLocation;
   });
