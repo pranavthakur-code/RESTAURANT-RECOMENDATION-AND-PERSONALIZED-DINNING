@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Package, Clock, CheckCircle, XCircle, Award } from "lucide-react";
+import { Package, Clock, CheckCircle, XCircle, Award, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 
