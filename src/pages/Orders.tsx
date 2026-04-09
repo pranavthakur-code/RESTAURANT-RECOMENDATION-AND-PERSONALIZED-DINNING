@@ -80,7 +80,7 @@ const Orders = () => {
       const [ordersRes, bookingsRes, redemptionsRes] = await Promise.all([
         supabase.from("orders").select("loyalty_points_earned, status").eq("user_id", user!.id),
         supabase.from("bookings").select("loyalty_points_earned, status").eq("user_id", user!.id),
-        supabase.from("redemptions").select("id, points_spent, created_at").eq("user_id", user!.id).order("created_at", { ascending: false }),
+        supabase.from("redemptions").select("id, points_spent, reward_name, created_at").eq("user_id", user!.id).order("created_at", { ascending: false }),
       ]);
 
       const activeOrderPoints = (ordersRes.data || [])
