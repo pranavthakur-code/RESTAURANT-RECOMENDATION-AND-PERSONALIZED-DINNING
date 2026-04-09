@@ -76,23 +76,40 @@ const Orders = () => {
         .eq("user_id", user!.id);
       if (error) throw error;
 
-      // Deduct loyalty points
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("loyalty_points, total_orders, total_points_earned")
-        .eq("user_id", user!.id)
-        .single();
-      if (profile) {
-        await supabase.from("profiles").update({
-          loyalty_points: Math.max(0, profile.loyalty_points - order.loyalty_points_earned),
-          total_orders: Math.max(0, profile.total_orders - 1),
-          total_points_earned: Math.max(0, profile.total_points_earned - order.loyalty_points_earned),
-        }).eq("user_id", user!.id);
-      }
+      // Recalculate points from scratch: 50 (signup) + active order points + active booking points - redemptions
+      const [ordersRes, bookingsRes, redemptionsRes] = await Promise.all([
+        supabase.from("orders").select("loyalty_points_earned, status").eq("user_id", user!.id),
+        supabase.from("bookings").select("loyalty_points_earned, status").eq("user_id", user!.id),
+        supabase.from("redemptions").select("points_spent").eq("user_id", user!.id),
+      ]);
+
+      const activeOrderPoints = (ordersRes.data || [])
+        .filter((o) => o.status !== "cancelled")
+        .reduce((sum, o) => sum + o.loyalty_points_earned, 0);
+      const activeOrderCount = (ordersRes.data || []).filter((o) => o.status !== "cancelled").length;
+
+      const activeBookingPoints = (bookingsRes.data || [])
+        .filter((b) => b.status !== "cancelled")
+        .reduce((sum, b) => sum + b.loyalty_points_earned, 0);
+      const activeBookingCount = (bookingsRes.data || []).filter((b) => b.status !== "cancelled").length;
+
+      const totalRedeemed = (redemptionsRes.data || [])
+        .reduce((sum, r) => sum + r.points_spent, 0);
+
+      const signupBonus = 50;
+      const totalEarned = signupBonus + activeOrderPoints + activeBookingPoints;
+      const currentPoints = Math.max(0, totalEarned - totalRedeemed);
+
+      await supabase.from("profiles").update({
+        loyalty_points: currentPoints,
+        total_orders: activeOrderCount,
+        total_bookings: activeBookingCount,
+        total_points_earned: totalEarned,
+      }).eq("user_id", user!.id);
 
       await refreshProfile();
       await fetchOrders();
-      toast.success(`Order cancelled. ${order.loyalty_points_earned} loyalty points deducted.`);
+      toast.success(`Order cancelled. Points recalculated to ${currentPoints}.`);
     } catch (e: any) {
       toast.error(e.message || "Failed to cancel order");
     } finally {
