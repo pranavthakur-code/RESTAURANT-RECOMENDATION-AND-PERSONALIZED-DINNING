@@ -80,7 +80,7 @@ const Orders = () => {
       const [ordersRes, bookingsRes, redemptionsRes] = await Promise.all([
         supabase.from("orders").select("loyalty_points_earned, status").eq("user_id", user!.id),
         supabase.from("bookings").select("loyalty_points_earned, status").eq("user_id", user!.id),
-        supabase.from("redemptions").select("points_spent").eq("user_id", user!.id),
+        supabase.from("redemptions").select("id, points_spent, created_at").eq("user_id", user!.id).order("created_at", { ascending: false }),
       ]);
 
       const activeOrderPoints = (ordersRes.data || [])
@@ -93,11 +93,25 @@ const Orders = () => {
         .reduce((sum, b) => sum + b.loyalty_points_earned, 0);
       const activeBookingCount = (bookingsRes.data || []).filter((b) => b.status !== "cancelled").length;
 
-      const totalRedeemed = (redemptionsRes.data || [])
-        .reduce((sum, r) => sum + r.points_spent, 0);
-
       const signupBonus = 50;
       const totalEarned = signupBonus + activeOrderPoints + activeBookingPoints;
+
+      // Auto-reverse redemptions if earned points can no longer cover them (newest first)
+      const redemptions = redemptionsRes.data || [];
+      let totalRedeemed = redemptions.reduce((sum, r) => sum + r.points_spent, 0);
+      const reversedNames: string[] = [];
+
+      if (totalEarned < totalRedeemed) {
+        // Reverse newest redemptions until points balance is >= 0
+        for (const r of redemptions) {
+          if (totalEarned >= totalRedeemed) break;
+          totalRedeemed -= r.points_spent;
+          reversedNames.push(r.reward_name || "Reward");
+          // Delete the reversed redemption
+          await supabase.from("redemptions").delete().eq("id", r.id);
+        }
+      }
+
       const currentPoints = Math.max(0, totalEarned - totalRedeemed);
 
       await supabase.from("profiles").update({
@@ -109,7 +123,8 @@ const Orders = () => {
 
       await refreshProfile();
       await fetchOrders();
-      toast.success(`Order cancelled. Points recalculated to ${currentPoints}.`);
+      const reversedMsg = reversedNames.length > 0 ? ` Reversed rewards: ${reversedNames.join(", ")}.` : "";
+      toast.success(`Order cancelled. Points: ${currentPoints}.${reversedMsg}`);
     } catch (e: any) {
       toast.error(e.message || "Failed to cancel order");
     } finally {
