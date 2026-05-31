@@ -307,6 +307,12 @@ const Orders = () => {
                     {order.status !== "cancelled" && (
                       <div className="bg-secondary/30 rounded-xl p-4 mb-3">
                         <p className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Delivery Tracking</p>
+                        <div className="relative h-1.5 bg-muted rounded-full mb-4 overflow-hidden">
+                          <div
+                            className="absolute inset-y-0 left-0 bg-primary rounded-full transition-all duration-1000 ease-linear"
+                            style={{ width: `${getProgress(order)}%` }}
+                          />
+                        </div>
                         <div className="flex items-center justify-between gap-2">
                           {stages.map((stage, idx) => {
                             const currentStage = getDeliveryStage(order);
