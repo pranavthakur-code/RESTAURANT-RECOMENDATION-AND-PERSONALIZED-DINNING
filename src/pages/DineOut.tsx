@@ -4,6 +4,8 @@ import ChatBot from "@/components/ChatBot";
 import { Button } from "@/components/ui/button";
 import { CalendarDays, Users, MapPin, Star, Award } from "lucide-react";
 import { motion } from "framer-motion";
+import { useState } from "react";
+import BookingDialog from "@/components/BookingDialog";
 
 const venues = [
   { name: "Café Mocha", type: "Café", location: "Connaught Place", image: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=400&h=300&fit=crop", capacity: "2-8", rating: 4.5, points: 25 },
@@ -15,6 +17,8 @@ const venues = [
 ];
 
 const DineOut = () => {
+  const [selectedVenue, setSelectedVenue] = useState<typeof venues[0] | null>(null);
+  const [open, setOpen] = useState(false);
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -49,7 +53,9 @@ const DineOut = () => {
                     <span className="flex items-center gap-1 text-xs font-semibold text-loyalty">
                       <Award className="w-3.5 h-3.5" /> Earn {v.points} pts
                     </span>
-                    <Button variant="hero" size="sm"><CalendarDays className="w-4 h-4 mr-1" /> Book Table</Button>
+                    <Button variant="hero" size="sm" onClick={() => { setSelectedVenue(v); setOpen(true); }}>
+                      <CalendarDays className="w-4 h-4 mr-1" /> Book Table
+                    </Button>
                   </div>
                 </div>
               </motion.div>
@@ -59,6 +65,7 @@ const DineOut = () => {
       </div>
       <Footer />
       <ChatBot />
+      <BookingDialog open={open} onOpenChange={setOpen} venue={selectedVenue} />
     </div>
   );
 };

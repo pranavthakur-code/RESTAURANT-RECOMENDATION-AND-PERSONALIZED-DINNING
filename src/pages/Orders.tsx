@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Package, Clock, CheckCircle, XCircle, Award, EyeOff } from "lucide-react";
+import { Package, Clock, CheckCircle, XCircle, Award, EyeOff, ChefHat, Bike, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 
@@ -41,6 +41,33 @@ const Orders = () => {
   const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   const visibleOrders = orders.filter((o) => !hiddenIds.has(o.id));
+
+  // Delivery tracking stages (time-based simulation from order creation)
+  const getDeliveryStage = (order: Order) => {
+    if (order.status === "cancelled") return -1;
+    if (order.status === "delivered") return 4;
+    const minutes = (Date.now() - new Date(order.created_at).getTime()) / 60000;
+    if (minutes < 2) return 0;        // Order placed
+    if (minutes < 8) return 1;        // Preparing
+    if (minutes < 15) return 2;       // Out for delivery
+    if (minutes < 25) return 3;       // Nearby
+    return 4;                          // Delivered
+  };
+
+  const stages = [
+    { label: "Order Placed", icon: <CheckCircle className="w-4 h-4" /> },
+    { label: "Preparing", icon: <ChefHat className="w-4 h-4" /> },
+    { label: "Out for Delivery", icon: <Bike className="w-4 h-4" /> },
+    { label: "Nearby", icon: <MapPin className="w-4 h-4" /> },
+    { label: "Delivered", icon: <Package className="w-4 h-4" /> },
+  ];
+
+  // Re-render every 30s so the tracker advances live
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const i = setInterval(() => setTick((t) => t + 1), 30000);
+    return () => clearInterval(i);
+  }, []);
 
   const hideOrder = (id: string) => {
     setHiddenIds((prev) => {
@@ -213,6 +240,38 @@ const Orders = () => {
                         </div>
                       ))}
                     </div>
+                    {order.status !== "cancelled" && (
+                      <div className="bg-secondary/30 rounded-xl p-4 mb-3">
+                        <p className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Delivery Tracking</p>
+                        <div className="flex items-center justify-between gap-2">
+                          {stages.map((stage, idx) => {
+                            const currentStage = getDeliveryStage(order);
+                            const reached = idx <= currentStage;
+                            const active = idx === currentStage && currentStage < 4;
+                            return (
+                              <div key={idx} className="flex-1 flex flex-col items-center text-center">
+                                <div className={`w-9 h-9 rounded-full flex items-center justify-center transition ${
+                                  reached ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                                } ${active ? "ring-2 ring-primary/40 animate-pulse" : ""}`}>
+                                  {stage.icon}
+                                </div>
+                                <span className={`text-[10px] mt-1.5 leading-tight ${reached ? "text-foreground font-medium" : "text-muted-foreground"}`}>
+                                  {stage.label}
+                                </span>
+                                {idx < stages.length - 1 && (
+                                  <div className={`hidden sm:block absolute h-0.5 ${reached ? "bg-primary" : "bg-muted"}`} />
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <p className="text-xs text-center text-muted-foreground mt-3">
+                          {getDeliveryStage(order) === 4
+                            ? "Order delivered. Enjoy your meal! 🍽️"
+                            : `Estimated arrival in ${Math.max(1, 25 - Math.floor((Date.now() - new Date(order.created_at).getTime()) / 60000))} min`}
+                        </p>
+                      </div>
+                    )}
                     <div className="flex items-center justify-between border-t border-border pt-3">
                       <div className="flex items-center gap-1 text-sm text-loyalty font-medium">
                         <Award className="w-4 h-4" />

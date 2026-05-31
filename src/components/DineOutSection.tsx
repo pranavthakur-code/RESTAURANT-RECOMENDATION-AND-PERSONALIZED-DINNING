@@ -2,6 +2,8 @@ import { Button } from "@/components/ui/button";
 import { CalendarDays, Users, MapPin, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
+import { useState } from "react";
+import BookingDialog from "@/components/BookingDialog";
 
 const venues = [
   {
@@ -31,6 +33,8 @@ const venues = [
 ];
 
 const DineOutSection = () => {
+  const [selectedVenue, setSelectedVenue] = useState<typeof venues[0] | null>(null);
+  const [open, setOpen] = useState(false);
   return (
     <section className="py-16 bg-secondary/30">
       <div className="container mx-auto px-4">
@@ -69,7 +73,7 @@ const DineOutSection = () => {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-loyalty">Earn {v.points} pts</span>
-                  <Button variant="hero" size="sm">
+                  <Button variant="hero" size="sm" onClick={() => { setSelectedVenue(v); setOpen(true); }}>
                     <CalendarDays className="w-4 h-4 mr-1" /> Book
                   </Button>
                 </div>
@@ -78,6 +82,7 @@ const DineOutSection = () => {
           ))}
         </div>
       </div>
+      <BookingDialog open={open} onOpenChange={setOpen} venue={selectedVenue} />
     </section>
   );
 };
