@@ -13,6 +13,7 @@ import Loyalty from "./pages/Loyalty";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import Orders from "./pages/Orders";
+import Bookings from "./pages/Bookings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ const App = () => (
               <Route path="/auth" element={<Auth />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/orders" element={<Orders />} />
+              <Route path="/bookings" element={<Bookings />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </CartProvider>
