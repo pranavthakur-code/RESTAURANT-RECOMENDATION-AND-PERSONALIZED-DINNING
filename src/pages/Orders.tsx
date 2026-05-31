@@ -4,7 +4,7 @@ import ChatBot from "@/components/ChatBot";
 import CartDrawer from "@/components/CartDrawer";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Package, Clock, CheckCircle, XCircle, Award, EyeOff, ChefHat, Bike, MapPin } from "lucide-react";
@@ -42,16 +42,28 @@ const Orders = () => {
 
   const visibleOrders = orders.filter((o) => !hiddenIds.has(o.id));
 
-  // Delivery tracking stages (time-based simulation from order creation)
+  // Total simulated delivery duration (minutes) and stage thresholds
+  const TOTAL_MIN = 25;
+  const stageThresholds = [0, 2, 8, 15, 25]; // minutes when each stage begins
+
+  const elapsedMin = (order: Order) =>
+    (Date.now() - new Date(order.created_at).getTime()) / 60000;
+
   const getDeliveryStage = (order: Order) => {
     if (order.status === "cancelled") return -1;
     if (order.status === "delivered") return 4;
-    const minutes = (Date.now() - new Date(order.created_at).getTime()) / 60000;
-    if (minutes < 2) return 0;        // Order placed
-    if (minutes < 8) return 1;        // Preparing
-    if (minutes < 15) return 2;       // Out for delivery
-    if (minutes < 25) return 3;       // Nearby
-    return 4;                          // Delivered
+    const m = elapsedMin(order);
+    let stage = 0;
+    for (let i = 0; i < stageThresholds.length; i++) {
+      if (m >= stageThresholds[i]) stage = i;
+    }
+    return stage;
+  };
+
+  const getProgress = (order: Order) => {
+    if (order.status === "cancelled") return 0;
+    if (order.status === "delivered") return 100;
+    return Math.min(100, (elapsedMin(order) / TOTAL_MIN) * 100);
   };
 
   const stages = [
@@ -62,12 +74,64 @@ const Orders = () => {
     { label: "Delivered", icon: <Package className="w-4 h-4" /> },
   ];
 
-  // Re-render every 30s so the tracker advances live
+  // Re-render every 3s for smooth real-time progression
   const [, setTick] = useState(0);
   useEffect(() => {
-    const i = setInterval(() => setTick((t) => t + 1), 30000);
+    const i = setInterval(() => setTick((t) => t + 1), 3000);
     return () => clearInterval(i);
   }, []);
+
+  // Notify on stage advancement and auto-mark delivered in DB
+  const lastStageRef = useRef<Record<string, number>>({});
+  useEffect(() => {
+    orders.forEach((o) => {
+      if (o.status === "cancelled" || o.status === "delivered") return;
+      const stage = getDeliveryStage(o);
+      const prev = lastStageRef.current[o.id];
+      if (prev !== undefined && stage > prev) {
+        const stageLabels = ["Order Placed", "Preparing", "Out for Delivery", "Nearby", "Delivered"];
+        toast.info(`${o.restaurant_name}: ${stageLabels[stage]}`);
+      }
+      lastStageRef.current[o.id] = stage;
+
+      // Persist delivered status once reached
+      if (stage === 4 && o.status !== "delivered") {
+        supabase
+          .from("orders")
+          .update({ status: "delivered" })
+          .eq("id", o.id)
+          .eq("user_id", user!.id)
+          .then(() => {
+            setOrders((prevOrders) =>
+              prevOrders.map((x) => (x.id === o.id ? { ...x, status: "delivered" } : x))
+            );
+          });
+      }
+    });
+  });
+
+  // Subscribe to realtime updates on orders so external status changes flow in
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel("orders-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "orders", filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          if (payload.eventType === "UPDATE" && payload.new) {
+            const updated = payload.new as Order;
+            setOrders((prev) => prev.map((o) => (o.id === updated.id ? { ...o, ...updated } : o)));
+          } else if (payload.eventType === "INSERT" && payload.new) {
+            fetchOrders();
+          }
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
 
   const hideOrder = (id: string) => {
     setHiddenIds((prev) => {
