@@ -33,7 +33,7 @@ const Auth = () => {
         navigate("/");
       }
     } else {
-      const { error } = await supabase.auth.signUp({
+      const { error, data } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -44,7 +44,13 @@ const Auth = () => {
       if (error) {
         toast.error(error.message);
       } else {
-        toast.success("Check your email to verify your account! You'll earn 50 loyalty points on first login.");
+        if (data.session) {
+          toast.success("Account created! You've earned 50 loyalty points.");
+          navigate("/");
+        } else {
+          toast.success("Account created! Please sign in.");
+          setIsLogin(true);
+        }
       }
     }
     setLoading(false);
