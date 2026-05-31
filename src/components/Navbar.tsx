@@ -10,6 +10,7 @@ const navLinks = [
   { to: "/restaurants", label: "Order Food" },
   { to: "/dineout", label: "DineOut" },
   { to: "/orders", label: "My Orders" },
+  { to: "/bookings", label: "My Bookings" },
   { to: "/loyalty", label: "Loyalty" },
 ];
 
