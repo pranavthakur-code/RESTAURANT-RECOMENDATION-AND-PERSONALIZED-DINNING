@@ -11,6 +11,7 @@ const navLinks = [
   { to: "/dineout", label: "DineOut" },
   { to: "/orders", label: "My Orders" },
   { to: "/bookings", label: "My Bookings" },
+  { to: "/account", label: "My Account" },
   { to: "/loyalty", label: "Loyalty" },
 ];
 
