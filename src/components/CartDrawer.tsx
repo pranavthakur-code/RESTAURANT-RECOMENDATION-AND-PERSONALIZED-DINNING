@@ -28,7 +28,10 @@ const CartDrawer = () => {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
 
-  const loyaltyPointsEarned = Math.floor(total / 20);
+  const { profile } = useAuth();
+  const basePts = Math.floor(total / 20);
+  const isPremium = !!profile?.is_premium;
+  const loyaltyPointsEarned = isPremium ? basePts * 2 : basePts;
 
   const handleProceedToPayment = () => {
     if (!user) {
