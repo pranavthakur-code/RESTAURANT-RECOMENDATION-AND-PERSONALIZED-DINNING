@@ -50,6 +50,50 @@ export type Database = {
         }
         Relationships: []
       }
+      menu_items_db: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          is_veg: boolean
+          name: string
+          price: number
+          restaurant_id: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_veg?: boolean
+          name: string
+          price: number
+          restaurant_id: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_veg?: boolean
+          name?: string
+          price?: number
+          restaurant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_items_db_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants_db"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           created_at: string
@@ -89,8 +133,10 @@ export type Database = {
           created_at: string
           full_name: string | null
           id: string
+          is_premium: boolean
           location: string | null
           loyalty_points: number
+          premium_since: string | null
           total_bookings: number
           total_orders: number
           total_points_earned: number
@@ -102,8 +148,10 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          is_premium?: boolean
           location?: string | null
           loyalty_points?: number
+          premium_since?: string | null
           total_bookings?: number
           total_orders?: number
           total_points_earned?: number
@@ -115,8 +163,10 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          is_premium?: boolean
           location?: string | null
           loyalty_points?: number
+          premium_since?: string | null
           total_bookings?: number
           total_orders?: number
           total_points_earned?: number
@@ -146,6 +196,66 @@ export type Database = {
           points_spent?: number
           reward_name?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      restaurants_db: {
+        Row: {
+          address: string | null
+          category: string | null
+          created_at: string
+          delivery_rating: number | null
+          delivery_review_count: number | null
+          dining_rating: number | null
+          dining_review_count: number | null
+          id: string
+          image_url: string | null
+          known_for: string | null
+          latitude: number | null
+          locality: string | null
+          longitude: number | null
+          name: string
+          premium_only: boolean
+          pricing_for_2: number | null
+          slug: string
+        }
+        Insert: {
+          address?: string | null
+          category?: string | null
+          created_at?: string
+          delivery_rating?: number | null
+          delivery_review_count?: number | null
+          dining_rating?: number | null
+          dining_review_count?: number | null
+          id?: string
+          image_url?: string | null
+          known_for?: string | null
+          latitude?: number | null
+          locality?: string | null
+          longitude?: number | null
+          name: string
+          premium_only?: boolean
+          pricing_for_2?: number | null
+          slug: string
+        }
+        Update: {
+          address?: string | null
+          category?: string | null
+          created_at?: string
+          delivery_rating?: number | null
+          delivery_review_count?: number | null
+          dining_rating?: number | null
+          dining_review_count?: number | null
+          id?: string
+          image_url?: string | null
+          known_for?: string | null
+          latitude?: number | null
+          locality?: string | null
+          longitude?: number | null
+          name?: string
+          premium_only?: boolean
+          pricing_for_2?: number | null
+          slug?: string
         }
         Relationships: []
       }
