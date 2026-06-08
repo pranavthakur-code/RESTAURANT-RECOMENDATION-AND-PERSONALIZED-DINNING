@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { MapPin, Menu, X, Award, ShoppingBag, LogOut } from "lucide-react";
+import { MapPin, Menu, X, Award, ShoppingBag, LogOut, Crown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -56,6 +56,11 @@ const Navbar = () => {
               <Award className="w-3.5 h-3.5" />
               <span>{profile?.loyalty_points ?? 0} pts</span>
             </Link>
+          )}
+          {user && profile?.is_premium && (
+            <span className="flex items-center gap-1.5 text-xs bg-gradient-warm text-primary-foreground px-3 py-1.5 rounded-full font-semibold">
+              <Crown className="w-3.5 h-3.5" /> Premium
+            </span>
           )}
           {user ? (
             <div className="flex items-center gap-2">

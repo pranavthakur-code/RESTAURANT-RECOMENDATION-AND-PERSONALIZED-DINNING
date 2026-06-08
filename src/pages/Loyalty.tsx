@@ -1,7 +1,7 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ChatBot from "@/components/ChatBot";
-import { Award, Gift, Ticket, BadgePercent, TrendingUp, ShoppingBag, CalendarDays } from "lucide-react";
+import { Award, Gift, Ticket, BadgePercent, TrendingUp, ShoppingBag, CalendarDays, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,21 +15,27 @@ const rewards = [
   { icon: Gift, name: "Free Dessert", points: 150, description: "Complimentary dessert with any meal" },
   { icon: Ticket, name: "₹500 Off DineOut", points: 500, description: "Valid on table bookings" },
   { icon: BadgePercent, name: "Buy 1 Get 1 Free", points: 400, description: "On selected restaurants" },
-  { icon: Gift, name: "Premium Membership", points: 1000, description: "1 month free premium access" },
+  { icon: Crown, name: "Premium Membership", points: 1000, description: "Unlock 2x points, premium-only restaurants & perks" },
 ];
 
 const Loyalty = () => {
   const { user, profile, refreshProfile } = useAuth();
   const pts = profile?.loyalty_points ?? 0;
+  const isPremium = !!profile?.is_premium;
 
   const handleRedeem = async (reward: typeof rewards[0]) => {
     if (!user) { toast.error("Please sign in first"); return; }
     if (pts < reward.points) { toast.error("Not enough points"); return; }
 
-    // Deduct points
+    // Deduct points (and grant Premium if applicable)
+    const updates: Record<string, any> = { loyalty_points: pts - reward.points };
+    if (reward.name === "Premium Membership") {
+      updates.is_premium = true;
+      updates.premium_since = new Date().toISOString();
+    }
     const { error: updateError } = await supabase
       .from("profiles")
-      .update({ loyalty_points: pts - reward.points })
+      .update(updates)
       .eq("user_id", user.id);
 
     if (updateError) { toast.error("Failed to redeem"); return; }
@@ -73,6 +79,11 @@ const Loyalty = () => {
                     <p className="opacity-80">
                       {profile?.full_name ? `Hey ${profile.full_name}!` : "Hey!"} Keep ordering to earn more.
                     </p>
+                    {isPremium && (
+                      <div className="mt-3 inline-flex items-center gap-1.5 bg-primary-foreground/15 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-semibold">
+                        <Crown className="w-3.5 h-3.5" /> Premium Member · 2x points active
+                      </div>
+                    )}
                   </div>
                   <div className="flex flex-col sm:flex-row gap-3">
                     <div className="bg-primary-foreground/10 backdrop-blur-sm rounded-xl p-4 text-center min-w-[120px]">

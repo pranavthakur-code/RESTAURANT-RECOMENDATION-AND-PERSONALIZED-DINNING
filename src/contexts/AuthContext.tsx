@@ -6,7 +6,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  profile: { full_name: string | null; loyalty_points: number; total_orders: number; total_bookings: number; location: string | null } | null;
+  profile: { full_name: string | null; loyalty_points: number; total_orders: number; total_bookings: number; location: string | null; is_premium: boolean; premium_since: string | null } | null;
   refreshProfile: () => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -31,10 +31,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const fetchProfile = async (userId: string) => {
     const { data } = await supabase
       .from("profiles")
-      .select("full_name, loyalty_points, total_orders, total_bookings, location")
+      .select("full_name, loyalty_points, total_orders, total_bookings, location, is_premium, premium_since")
       .eq("user_id", userId)
       .single();
-    if (data) setProfile(data);
+    if (data) setProfile(data as any);
   };
 
   const refreshProfile = async () => {
