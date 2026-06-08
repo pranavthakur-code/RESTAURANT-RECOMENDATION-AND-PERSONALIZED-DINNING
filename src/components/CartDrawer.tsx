@@ -21,14 +21,13 @@ const paymentMethods = [
 
 const CartDrawer = () => {
   const { items, total, itemCount, updateQuantity, removeItem, clearCart, restaurantName } = useCart();
-  const { user, refreshProfile } = useAuth();
+  const { user, refreshProfile, profile } = useAuth();
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<"cart" | "payment">("cart");
   const [selectedPayment, setSelectedPayment] = useState<PaymentMethod>(null);
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
 
-  const { profile } = useAuth();
   const basePts = Math.floor(total / 20);
   const isPremium = !!profile?.is_premium;
   const loyaltyPointsEarned = isPremium ? basePts * 2 : basePts;
