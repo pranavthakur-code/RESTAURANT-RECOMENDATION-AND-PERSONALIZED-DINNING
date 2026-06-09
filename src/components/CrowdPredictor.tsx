@@ -54,8 +54,8 @@ const CrowdPredictor = ({ restaurantName, pricingFor2, seed }: Props) => {
   }, [pricingFor2]);
 
   useEffect(() => {
-    (async () => {
-      // Fetch confirmed bookings for the next 14 days at this venue
+    let cancelled = false;
+    const fetchBookings = async () => {
       const from = new Date().toISOString().slice(0, 10);
       const { data } = await supabase
         .from("bookings")
@@ -63,6 +63,7 @@ const CrowdPredictor = ({ restaurantName, pricingFor2, seed }: Props) => {
         .eq("venue_name", restaurantName)
         .gte("booking_date", from)
         .neq("status", "cancelled");
+      if (cancelled) return;
       const map: Record<string, number> = {};
       (data || []).forEach((b: any) => {
         const dow = new Date(b.booking_date).getDay();
@@ -71,7 +72,11 @@ const CrowdPredictor = ({ restaurantName, pricingFor2, seed }: Props) => {
         map[key] = (map[key] || 0) + (b.guests || 2);
       });
       setBookings(map);
-    })();
+    };
+
+    fetchBookings();
+    const interval = setInterval(fetchBookings, 120000); // refresh every 2 minutes
+    return () => { cancelled = true; clearInterval(interval); };
   }, [restaurantName]);
 
   const rows = useMemo(() => {
