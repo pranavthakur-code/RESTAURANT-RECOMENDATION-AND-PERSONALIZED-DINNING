@@ -2,6 +2,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ChatBot from "@/components/ChatBot";
 import CartDrawer from "@/components/CartDrawer";
+import LocationBar from "@/components/LocationBar";
 import { Search, MapPin, Star, Award, Leaf, Drumstick, Navigation, Crown, Clock } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
@@ -111,6 +112,10 @@ const Restaurants = () => {
           <p className="text-muted-foreground mb-6">
             {userLoc ? "Sorted by distance from you" : userCity ? `Top-rated picks near ${userCity}` : "Discover top-rated restaurants across Delhi NCR"}
           </p>
+
+          <div className="mb-4">
+            <LocationBar onLocationChange={(l) => setUserLoc({ lat: l.lat, lng: l.lng })} />
+          </div>
 
           <div className="flex flex-col sm:flex-row gap-3 mb-4">
             <div className="flex-1 flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-3">
