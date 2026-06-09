@@ -53,8 +53,10 @@ const LocationBar = ({ onLocationChange, compact }: Props) => {
         const p = JSON.parse(raw);
         setCoords({ lat: p.lat, lng: p.lng });
         setAddress(p.address || "");
+        onLocationChange?.({ lat: p.lat, lng: p.lng, address: p.address || "" });
       } catch {}
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
