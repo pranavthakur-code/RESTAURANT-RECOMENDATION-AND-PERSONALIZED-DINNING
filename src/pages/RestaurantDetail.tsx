@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import CrowdPredictor from "@/components/CrowdPredictor";
 
 type Resto = {
   id: string; slug: string; name: string; category: string | null;
@@ -119,6 +120,9 @@ const RestaurantDetail = () => {
         </div>
 
         <div className="container mx-auto px-4 py-8">
+          <div className="mb-6">
+            <CrowdPredictor restaurantName={restaurant.name} pricingFor2={restaurant.pricing_for_2} seed={restaurant.id} />
+          </div>
           <div className="flex flex-wrap items-center gap-2 mb-4">
             <Button size="sm" variant={diet === "all" ? "default" : "secondary"} onClick={() => setDiet("all")}>All</Button>
             <Button size="sm" variant={diet === "veg" ? "default" : "secondary"} onClick={() => setDiet("veg")}>

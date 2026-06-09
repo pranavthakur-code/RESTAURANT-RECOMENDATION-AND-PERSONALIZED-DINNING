@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import CrowdPredictor from "@/components/CrowdPredictor";
 
 interface Venue {
   name: string;
@@ -86,14 +87,15 @@ const BookingDialog = ({ open, onOpenChange, venue }: Props) => {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-display">Book at {venue.name}</DialogTitle>
           <DialogDescription>
             {venue.type} • {venue.location}
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
+        <div className="grid md:grid-cols-2 gap-5">
+          <div className="space-y-4">
           <div>
             <Label>Full Name</Label>
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" className="mt-1" />
@@ -135,6 +137,10 @@ const BookingDialog = ({ open, onOpenChange, venue }: Props) => {
           <Button variant="hero" className="w-full" onClick={handleBook} disabled={loading}>
             {loading ? "Booking..." : "Confirm Booking"}
           </Button>
+          </div>
+          <div>
+            <CrowdPredictor restaurantName={venue.name} seed={venue.name} />
+          </div>
         </div>
       </DialogContent>
     </Dialog>
