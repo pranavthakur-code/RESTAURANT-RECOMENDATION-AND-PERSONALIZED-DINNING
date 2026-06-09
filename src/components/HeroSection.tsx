@@ -1,18 +1,17 @@
 import { Button } from "@/components/ui/button";
-import { Search, MapPin } from "lucide-react";
+import { Search } from "lucide-react";
 import { motion } from "framer-motion";
 import heroFood from "@/assets/hero-food.jpg";
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
+import LocationBar from "@/components/LocationBar";
 
 const HeroSection = () => {
   const navigate = useNavigate();
-  const [location, setLocation] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
   const handleSearch = () => {
     const params = new URLSearchParams();
-    if (location) params.set("location", location);
     if (searchQuery) params.set("search", searchQuery);
     navigate(`/restaurants?${params.toString()}`);
   };
@@ -50,20 +49,10 @@ const HeroSection = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.3 }}
-            className="flex flex-col sm:flex-row gap-3 mb-8"
+            className="flex flex-col gap-3 mb-8"
           >
-            <div className="flex-1 flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-3">
-              <MapPin className="w-5 h-5 text-primary shrink-0" />
-              <input
-                type="text"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                placeholder="Enter your location (Delhi, Mumbai, Jaipur...)"
-                className="bg-transparent text-foreground placeholder:text-muted-foreground outline-none w-full text-sm"
-              />
-            </div>
-            <div className="flex-1 flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-3">
+            <LocationBar />
+            <div className="flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-3">
               <Search className="w-5 h-5 text-muted-foreground shrink-0" />
               <input
                 type="text"
