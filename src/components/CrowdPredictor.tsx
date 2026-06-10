@@ -54,7 +54,7 @@ const CrowdPredictor = ({ restaurantName, pricingFor2, seed }: Props) => {
     return 110;
   }, [pricingFor2]);
 
-  const fetchBookings = async () => {
+  const fetchBookings = useCallback(async () => {
     setRefreshing(true);
     const from = new Date().toISOString().slice(0, 10);
     const { data } = await supabase
@@ -72,7 +72,7 @@ const CrowdPredictor = ({ restaurantName, pricingFor2, seed }: Props) => {
     });
     setBookings(map);
     setRefreshing(false);
-  };
+  }, [restaurantName]);
 
   useEffect(() => {
     let cancelled = false;
@@ -81,7 +81,7 @@ const CrowdPredictor = ({ restaurantName, pricingFor2, seed }: Props) => {
       if (!cancelled) fetchBookings();
     }, 120000);
     return () => { cancelled = true; clearInterval(interval); };
-  }, [restaurantName]);
+  }, [fetchBookings]);
 
   const rows = useMemo(() => {
     const weekend = tab === "weekend";
