@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Users, TrendingUp, Activity } from "lucide-react";
+import { Users, TrendingUp, Activity, RefreshCw } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface Props {
