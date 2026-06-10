@@ -43,6 +43,7 @@ const CrowdPredictor = ({ restaurantName, pricingFor2, seed }: Props) => {
     return d === 0 || d === 6 ? "weekend" : "weekday";
   });
   const [bookings, setBookings] = useState<Record<string, number>>({});
+  const [refreshing, setRefreshing] = useState(false);
 
   // Capacity heuristic: higher-priced restaurants typically have fewer seats
   const capacity = useMemo(() => {
