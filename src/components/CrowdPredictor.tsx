@@ -54,29 +54,32 @@ const CrowdPredictor = ({ restaurantName, pricingFor2, seed }: Props) => {
     return 110;
   }, [pricingFor2]);
 
+  const fetchBookings = async () => {
+    setRefreshing(true);
+    const from = new Date().toISOString().slice(0, 10);
+    const { data } = await supabase
+      .from("bookings")
+      .select("booking_time, guests, booking_date, status")
+      .eq("venue_name", restaurantName)
+      .gte("booking_date", from)
+      .neq("status", "cancelled");
+    const map: Record<string, number> = {};
+    (data || []).forEach((b: any) => {
+      const dow = new Date(b.booking_date).getDay();
+      const isWk = dow === 0 || dow === 6;
+      const key = `${isWk ? "wk" : "wd"}|${b.booking_time}`;
+      map[key] = (map[key] || 0) + (b.guests || 2);
+    });
+    setBookings(map);
+    setRefreshing(false);
+  };
+
   useEffect(() => {
     let cancelled = false;
-    const fetchBookings = async () => {
-      const from = new Date().toISOString().slice(0, 10);
-      const { data } = await supabase
-        .from("bookings")
-        .select("booking_time, guests, booking_date, status")
-        .eq("venue_name", restaurantName)
-        .gte("booking_date", from)
-        .neq("status", "cancelled");
-      if (cancelled) return;
-      const map: Record<string, number> = {};
-      (data || []).forEach((b: any) => {
-        const dow = new Date(b.booking_date).getDay();
-        const isWk = dow === 0 || dow === 6;
-        const key = `${isWk ? "wk" : "wd"}|${b.booking_time}`;
-        map[key] = (map[key] || 0) + (b.guests || 2);
-      });
-      setBookings(map);
-    };
-
     fetchBookings();
-    const interval = setInterval(fetchBookings, 120000); // refresh every 2 minutes
+    const interval = setInterval(() => {
+      if (!cancelled) fetchBookings();
+    }, 120000);
     return () => { cancelled = true; clearInterval(interval); };
   }, [restaurantName]);
 
