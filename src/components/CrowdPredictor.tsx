@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Users, TrendingUp, Activity } from "lucide-react";
+import { Users, TrendingUp, Activity, RefreshCw } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface Props {
@@ -43,6 +43,7 @@ const CrowdPredictor = ({ restaurantName, pricingFor2, seed }: Props) => {
     return d === 0 || d === 6 ? "weekend" : "weekday";
   });
   const [bookings, setBookings] = useState<Record<string, number>>({});
+  const [refreshing, setRefreshing] = useState(false);
 
   // Capacity heuristic: higher-priced restaurants typically have fewer seats
   const capacity = useMemo(() => {
@@ -53,31 +54,34 @@ const CrowdPredictor = ({ restaurantName, pricingFor2, seed }: Props) => {
     return 110;
   }, [pricingFor2]);
 
+  const fetchBookings = useCallback(async () => {
+    setRefreshing(true);
+    const from = new Date().toISOString().slice(0, 10);
+    const { data } = await supabase
+      .from("bookings")
+      .select("booking_time, guests, booking_date, status")
+      .eq("venue_name", restaurantName)
+      .gte("booking_date", from)
+      .neq("status", "cancelled");
+    const map: Record<string, number> = {};
+    (data || []).forEach((b: any) => {
+      const dow = new Date(b.booking_date).getDay();
+      const isWk = dow === 0 || dow === 6;
+      const key = `${isWk ? "wk" : "wd"}|${b.booking_time}`;
+      map[key] = (map[key] || 0) + (b.guests || 2);
+    });
+    setBookings(map);
+    setRefreshing(false);
+  }, [restaurantName]);
+
   useEffect(() => {
     let cancelled = false;
-    const fetchBookings = async () => {
-      const from = new Date().toISOString().slice(0, 10);
-      const { data } = await supabase
-        .from("bookings")
-        .select("booking_time, guests, booking_date, status")
-        .eq("venue_name", restaurantName)
-        .gte("booking_date", from)
-        .neq("status", "cancelled");
-      if (cancelled) return;
-      const map: Record<string, number> = {};
-      (data || []).forEach((b: any) => {
-        const dow = new Date(b.booking_date).getDay();
-        const isWk = dow === 0 || dow === 6;
-        const key = `${isWk ? "wk" : "wd"}|${b.booking_time}`;
-        map[key] = (map[key] || 0) + (b.guests || 2);
-      });
-      setBookings(map);
-    };
-
     fetchBookings();
-    const interval = setInterval(fetchBookings, 120000); // refresh every 2 minutes
+    const interval = setInterval(() => {
+      if (!cancelled) fetchBookings();
+    }, 120000);
     return () => { cancelled = true; clearInterval(interval); };
-  }, [restaurantName]);
+  }, [fetchBookings]);
 
   const rows = useMemo(() => {
     const weekend = tab === "weekend";
@@ -104,8 +108,19 @@ const CrowdPredictor = ({ restaurantName, pricingFor2, seed }: Props) => {
             Powered by live bookings, capacity (~{capacity} seats) & historical trends
           </p>
         </div>
-        <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-background border border-border ${avgLevel.text}`}>
-          <TrendingUp className="w-3.5 h-3.5" /> {avgLevel.label} overall
+        <div className="flex items-center gap-2">
+          <button
+            onClick={fetchBookings}
+            disabled={refreshing}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-background border border-border hover:bg-secondary transition-colors disabled:opacity-50"
+            title="Refresh now"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
+            Refresh{refreshing ? "ing" : ""}
+          </button>
+          <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-background border border-border ${avgLevel.text}`}>
+            <TrendingUp className="w-3.5 h-3.5" /> {avgLevel.label} overall
+          </div>
         </div>
       </div>
 
