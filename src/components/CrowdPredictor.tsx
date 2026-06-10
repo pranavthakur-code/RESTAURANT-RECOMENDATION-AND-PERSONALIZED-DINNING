@@ -108,8 +108,19 @@ const CrowdPredictor = ({ restaurantName, pricingFor2, seed }: Props) => {
             Powered by live bookings, capacity (~{capacity} seats) & historical trends
           </p>
         </div>
-        <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-background border border-border ${avgLevel.text}`}>
-          <TrendingUp className="w-3.5 h-3.5" /> {avgLevel.label} overall
+        <div className="flex items-center gap-2">
+          <button
+            onClick={fetchBookings}
+            disabled={refreshing}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-background border border-border hover:bg-secondary transition-colors disabled:opacity-50"
+            title="Refresh now"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
+            Refresh{refreshing ? "ing" : ""}
+          </button>
+          <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-background border border-border ${avgLevel.text}`}>
+            <TrendingUp className="w-3.5 h-3.5" /> {avgLevel.label} overall
+          </div>
         </div>
       </div>
 
