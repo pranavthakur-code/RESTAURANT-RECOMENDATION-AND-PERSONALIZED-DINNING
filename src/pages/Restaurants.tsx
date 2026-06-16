@@ -3,13 +3,14 @@ import Footer from "@/components/Footer";
 import ChatBot from "@/components/ChatBot";
 import CartDrawer from "@/components/CartDrawer";
 import LocationBar from "@/components/LocationBar";
-import { Search, MapPin, Star, Award, Leaf, Drumstick, Navigation, Crown, Clock } from "lucide-react";
+import { Search, MapPin, Star, Award, Leaf, Drumstick, Navigation, Crown, Clock, UtensilsCrossed, CalendarCheck, Bike } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import BookingDialog from "@/components/BookingDialog";
 
 type Resto = {
   id: string;
@@ -53,6 +54,7 @@ function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: num
 
 const Restaurants = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { profile } = useAuth();
   const isPremium = !!profile?.is_premium;
   const userCity = profile?.location || "";
@@ -63,6 +65,8 @@ const Restaurants = () => {
   const [restos, setRestos] = useState<Resto[]>([]);
   const [loading, setLoading] = useState(true);
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null);
+  const [bookingOpen, setBookingOpen] = useState(false);
+  const [bookingVenue, setBookingVenue] = useState<{ name: string; type: string; location: string; points: number } | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -153,10 +157,13 @@ const Restaurants = () => {
                 const cls = classifyResto(r.category);
                 const dist = userLoc && r.latitude ? haversineKm(userLoc, { lat: r.latitude, lng: r.longitude! }) : null;
                 const locked = r.premium_only && !isPremium;
+                const supportsDineIn = r.dining_rating != null; // dine-in eligible if it has a dining rating
+                const supportsDelivery = r.delivery_rating != null || true; // delivery available by default
+                const points = Math.max(5, Math.round((r.pricing_for_2 || 200) / 20));
                 return (
                   <motion.div key={r.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i * 0.02, 0.4) }}>
-                    <Link to={locked ? "/loyalty" : `/restaurant/${r.slug}`}>
-                      <div className={`group rounded-2xl overflow-hidden bg-card border transition-all hover:-translate-y-1 ${r.premium_only ? "border-loyalty/40" : "border-border hover:border-primary/30"}`}>
+                    <div className={`group rounded-2xl overflow-hidden bg-card border transition-all hover:-translate-y-1 flex flex-col h-full ${r.premium_only ? "border-loyalty/40" : "border-border hover:border-primary/30"}`}>
+                      <Link to={locked ? "/loyalty" : `/restaurant/${r.slug}`} className="block">
                         <div className="relative h-44 overflow-hidden">
                           <img src={r.image_url || ""} alt={r.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                           {r.dining_rating != null && (
@@ -178,7 +185,8 @@ const Restaurants = () => {
                             )}
                           </div>
                         </div>
-                        <div className="p-4">
+                      </Link>
+                      <div className="p-4 flex flex-col flex-1">
                           <div className="flex items-start justify-between gap-2">
                             <h3 className="font-display font-semibold text-foreground line-clamp-1">{r.name}</h3>
                             {r.pricing_for_2 != null && (
@@ -191,11 +199,46 @@ const Restaurants = () => {
                             {dist != null && <span className="flex items-center gap-1"><Navigation className="w-3 h-3" /> {dist.toFixed(1)} km</span>}
                           </div>
                           <div className="mt-2 flex items-center gap-1 text-xs text-loyalty font-medium">
-                            <Award className="w-3 h-3" /> Earn {Math.max(5, Math.round((r.pricing_for_2 || 200) / 20))} pts{isPremium && " · 2x Premium"}
+                            <Award className="w-3 h-3" /> Earn {points} pts{isPremium && " · 2x Premium"}
+                          </div>
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            {supportsDelivery && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                                <Bike className="w-3 h-3" /> Delivery Available
+                              </span>
+                            )}
+                            {supportsDineIn && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-loyalty/10 text-loyalty border border-loyalty/20">
+                                <UtensilsCrossed className="w-3 h-3" /> Table Booking Available
+                              </span>
+                            )}
+                          </div>
+                          <div className="mt-3 flex gap-2 pt-1 mt-auto">
+                            <Button
+                              size="sm"
+                              variant="default"
+                              className="flex-1"
+                              onClick={() => navigate(locked ? "/loyalty" : `/restaurant/${r.slug}`)}
+                            >
+                              <Bike className="w-3.5 h-3.5 mr-1" /> Order Food
+                            </Button>
+                            {supportsDineIn && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="flex-1"
+                                onClick={() => {
+                                  if (locked) { navigate("/loyalty"); return; }
+                                  setBookingVenue({ name: r.name, type: r.category || "Restaurant", location: r.locality || "", points });
+                                  setBookingOpen(true);
+                                }}
+                              >
+                                <CalendarCheck className="w-3.5 h-3.5 mr-1" /> Book Table
+                              </Button>
+                            )}
                           </div>
                         </div>
                       </div>
-                    </Link>
                   </motion.div>
                 );
               })}
@@ -209,6 +252,7 @@ const Restaurants = () => {
       <Footer />
       <ChatBot />
       <CartDrawer />
+      <BookingDialog open={bookingOpen} onOpenChange={setBookingOpen} venue={bookingVenue} />
     </div>
   );
 };
