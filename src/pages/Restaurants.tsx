@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import BookingDialog from "@/components/BookingDialog";
+import { Slider } from "@/components/ui/slider";
 
 type Resto = {
   id: string;
@@ -65,6 +66,8 @@ const Restaurants = () => {
   const [restos, setRestos] = useState<Resto[]>([]);
   const [loading, setLoading] = useState(true);
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null);
+  const [radiusKm, setRadiusKm] = useState<number>(5);
+  const [radiusOn, setRadiusOn] = useState<boolean>(true);
   const [bookingOpen, setBookingOpen] = useState(false);
   const [bookingVenue, setBookingVenue] = useState<{ name: string; type: string; location: string; points: number } | null>(null);
 
@@ -92,9 +95,18 @@ const Restaurants = () => {
       const cls = classifyResto(r.category);
       const matchDiet = diet === "all" || (diet === "veg" ? cls.pureVeg : cls.hasNonVeg);
       const matchPremium = !premiumOnly || r.premium_only;
-      return matchSearch && matchLoc && matchDiet && matchPremium;
+      let matchRadius = true;
+      if (radiusOn && userLoc) {
+        if (r.latitude == null || r.longitude == null) {
+          matchRadius = false;
+        } else {
+          const d = haversineKm(userLoc, { lat: r.latitude, lng: r.longitude });
+          matchRadius = d <= radiusKm;
+        }
+      }
+      return matchSearch && matchLoc && matchDiet && matchPremium && matchRadius;
     });
-  }, [restos, search, locationFilter, diet, premiumOnly]);
+  }, [restos, search, locationFilter, diet, premiumOnly, radiusOn, radiusKm, userLoc]);
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
@@ -148,6 +160,44 @@ const Restaurants = () => {
             </Button>
             <span className="text-sm text-muted-foreground ml-auto">{sorted.length} restaurants</span>
           </div>
+
+          {userLoc && (
+            <div className="mb-8 rounded-2xl border border-border bg-card p-4">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div className="flex items-center gap-2 text-sm">
+                  <Bike className="w-4 h-4 text-primary" />
+                  <span className="font-semibold text-foreground">Delivery radius</span>
+                  <span className="text-muted-foreground">
+                    {radiusOn ? `within ${radiusKm} km of your live location` : "off"}
+                  </span>
+                </div>
+                <Button
+                  size="sm"
+                  variant={radiusOn ? "default" : "outline"}
+                  onClick={() => setRadiusOn((v) => !v)}
+                >
+                  {radiusOn ? "On" : "Off"}
+                </Button>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-[11px] text-muted-foreground w-8">1 km</span>
+                <Slider
+                  value={[radiusKm]}
+                  min={1}
+                  max={20}
+                  step={1}
+                  onValueChange={(v) => { setRadiusKm(v[0]); if (!radiusOn) setRadiusOn(true); }}
+                  className="flex-1"
+                />
+                <span className="text-[11px] text-muted-foreground w-10 text-right">20 km</span>
+              </div>
+              {radiusOn && sorted.length === 0 && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  No restaurants deliver within {radiusKm} km — try expanding the radius.
+                </p>
+              )}
+            </div>
+          )}
 
           {loading ? (
             <div className="text-center py-20 text-muted-foreground">Loading restaurants…</div>
