@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { MapPin, Navigation, Loader2, Bike, Clock, Pencil, Check, ChevronRight } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { MapPin, Navigation, Loader2, Bike, Clock, Pencil, Check, ChevronRight, Search, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
@@ -37,6 +37,26 @@ function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: num
 
 const STORAGE_KEY = "dineout_user_location";
 
+const BROWSER_KEY = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY as string | undefined;
+const TRACKING_ID = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID as string | undefined;
+
+declare global { interface Window { __gmapsReady?: Promise<typeof google>; google: any; __initGMaps?: () => void; } }
+
+function loadGoogleMaps(): Promise<any> {
+  if (typeof window === "undefined") return Promise.reject(new Error("no window"));
+  if (window.google?.maps) return Promise.resolve(window.google);
+  if (window.__gmapsReady) return window.__gmapsReady;
+  if (!BROWSER_KEY) return Promise.reject(new Error("Maps key missing"));
+  window.__gmapsReady = new Promise((resolve, reject) => {
+    window.__initGMaps = () => resolve(window.google);
+    const s = document.createElement("script");
+    s.src = `https://maps.googleapis.com/maps/api/js?key=${BROWSER_KEY}&libraries=places&loading=async&callback=__initGMaps${TRACKING_ID ? `&channel=${TRACKING_ID}` : ""}`;
+    s.async = true; s.defer = true; s.onerror = () => reject(new Error("Maps failed to load"));
+    document.head.appendChild(s);
+  });
+  return window.__gmapsReady;
+}
+
 const LocationBar = ({ onLocationChange, compact }: Props) => {
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [address, setAddress] = useState("");
@@ -45,6 +65,12 @@ const LocationBar = ({ onLocationChange, compact }: Props) => {
   const [detecting, setDetecting] = useState(false);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [expanded, setExpanded] = useState(false);
+  const [suggestions, setSuggestions] = useState<{ id: string; main: string; secondary: string }[]>([]);
+  const [showMap, setShowMap] = useState(false);
+  const sessionTokenRef = useRef<any>(null);
+  const mapRef = useRef<HTMLDivElement | null>(null);
+  const mapObjRef = useRef<any>(null);
+  const markerRef = useRef<any>(null);
 
   useEffect(() => {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -88,15 +114,11 @@ const LocationBar = ({ onLocationChange, compact }: Props) => {
 
   const reverseGeocode = async (lat: number, lng: number) => {
     try {
-      const r = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=16&addressdetails=1`,
-        { headers: { Accept: "application/json" } }
-      );
-      const j = await r.json();
-      const a = j.address || {};
-      const parts = [a.road || a.neighbourhood, a.suburb || a.city_district, a.city || a.town || a.state_district, a.state]
-        .filter(Boolean);
-      return parts.join(", ") || j.display_name || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+      const { data, error } = await supabase.functions.invoke("geo", {
+        body: { action: "reverse", lat, lng },
+      });
+      if (error) throw error;
+      return (data?.formatted as string) || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
     } catch {
       return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
     }
@@ -114,6 +136,7 @@ const LocationBar = ({ onLocationChange, compact }: Props) => {
         persist(p.coords.latitude, p.coords.longitude, addr);
         setExpanded(true);
         setDetecting(false);
+        setShowMap(true);
         toast.success("Location detected");
       },
       () => {
@@ -123,17 +146,102 @@ const LocationBar = ({ onLocationChange, compact }: Props) => {
         setDetecting(false);
         toast.message("Couldn't access GPS — using Delhi as default");
       },
-      { enableHighAccuracy: true, timeout: 8000 }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   };
 
-  const saveManual = () => {
-    if (!draft.trim()) return;
-    // Keep existing coords (or fallback) so nearby still works
-    const c = coords || { lat: 28.6139, lng: 77.209 };
-    persist(c.lat, c.lng, draft.trim());
+  // Live Places autocomplete (Places API New, browser key)
+  useEffect(() => {
+    if (!editing) return;
+    const q = draft.trim();
+    if (q.length < 3) { setSuggestions([]); return; }
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      try {
+        const g = await loadGoogleMaps();
+        const { AutocompleteSuggestion, AutocompleteSessionToken } =
+          (await g.maps.importLibrary("places")) as any;
+        if (!sessionTokenRef.current) sessionTokenRef.current = new AutocompleteSessionToken();
+        const bias = coords
+          ? { circle: { center: { latitude: coords.lat, longitude: coords.lng }, radius: 50000 } }
+          : undefined;
+        const { suggestions } = await AutocompleteSuggestion.fetchAutocompleteSuggestions({
+          input: q,
+          sessionToken: sessionTokenRef.current,
+          locationBias: bias,
+          includedRegionCodes: ["in"],
+        });
+        if (cancelled) return;
+        setSuggestions(
+          (suggestions || []).slice(0, 6).map((s: any) => {
+            const p = s.placePrediction;
+            return {
+              id: p?.placeId,
+              main: p?.mainText?.text || p?.text?.text || "",
+              secondary: p?.secondaryText?.text || "",
+            };
+          }).filter((x: any) => x.id)
+        );
+      } catch {
+        setSuggestions([]);
+      }
+    }, 220);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [draft, editing, coords]);
+
+  const pickSuggestion = async (placeId: string, label: string) => {
     setEditing(false);
+    setSuggestions([]);
+    try {
+      const { data, error } = await supabase.functions.invoke("geo", {
+        body: { action: "place_details", placeId },
+      });
+      if (error) throw error;
+      const lat = Number(data?.lat), lng = Number(data?.lng);
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        persist(lat, lng, (data?.formatted as string) || label);
+        setShowMap(true);
+        setExpanded(true);
+        sessionTokenRef.current = null;
+      } else {
+        toast.error("Couldn't get coordinates for that place");
+      }
+    } catch {
+      toast.error("Place lookup failed");
+    }
   };
+
+  // Map preview with draggable pin (Zomato-style "drag to refine")
+  useEffect(() => {
+    if (!showMap || !coords || !mapRef.current) return;
+    let disposed = false;
+    (async () => {
+      try {
+        const g = await loadGoogleMaps();
+        if (disposed) return;
+        if (!mapObjRef.current) {
+          mapObjRef.current = new g.maps.Map(mapRef.current!, {
+            center: coords, zoom: 16, disableDefaultUI: true, zoomControl: true,
+            gestureHandling: "greedy", clickableIcons: false,
+          });
+          markerRef.current = new g.maps.Marker({
+            position: coords, map: mapObjRef.current, draggable: true,
+          });
+          markerRef.current.addListener("dragend", async (e: any) => {
+            const lat = e.latLng.lat(), lng = e.latLng.lng();
+            const addr = await reverseGeocode(lat, lng);
+            persist(lat, lng, addr);
+          });
+        } else {
+          mapObjRef.current.setCenter(coords);
+          markerRef.current.setPosition(coords);
+        }
+      } catch {
+        // map unavailable; preview just stays hidden
+      }
+    })();
+    return () => { disposed = true; };
+  }, [showMap, coords]);
 
   return (
     <div className="rounded-2xl bg-card border border-border overflow-hidden">
@@ -144,16 +252,19 @@ const LocationBar = ({ onLocationChange, compact }: Props) => {
         <div className="flex-1 min-w-0">
           <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Deliver to</div>
           {editing ? (
-            <div className="flex items-center gap-2 mt-1">
-              <input
-                autoFocus
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && saveManual()}
-                placeholder="Enter address, area or landmark"
-                className="bg-transparent border-b border-primary/40 text-sm outline-none flex-1 text-foreground placeholder:text-muted-foreground"
-              />
-              <button onClick={saveManual} className="text-primary"><Check className="w-4 h-4" /></button>
+            <div className="relative mt-1">
+              <div className="flex items-center gap-2">
+                <Search className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                <input
+                  autoFocus
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Escape") { setEditing(false); setSuggestions([]); } }}
+                  placeholder="Search address, area, landmark or building"
+                  className="bg-transparent border-b border-primary/40 text-sm outline-none flex-1 text-foreground placeholder:text-muted-foreground"
+                />
+                <button onClick={() => { setEditing(false); setSuggestions([]); }} className="text-muted-foreground"><X className="w-4 h-4" /></button>
+              </div>
             </div>
           ) : (
             <button
@@ -175,6 +286,39 @@ const LocationBar = ({ onLocationChange, compact }: Props) => {
         </button>
       </div>
 
+      <AnimatePresence>
+        {editing && suggestions.length > 0 && (
+          <motion.ul
+            initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+            className="border-t border-border bg-background/60 divide-y divide-border/60"
+          >
+            {suggestions.map((s) => (
+              <li key={s.id}>
+                <button
+                  onClick={() => pickSuggestion(s.id, [s.main, s.secondary].filter(Boolean).join(", "))}
+                  className="w-full text-left px-4 py-2.5 flex items-start gap-3 hover:bg-secondary transition"
+                >
+                  <MapPin className="w-4 h-4 mt-0.5 text-primary shrink-0" />
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-foreground truncate">{s.main}</div>
+                    {s.secondary && <div className="text-[11px] text-muted-foreground truncate">{s.secondary}</div>}
+                  </div>
+                </button>
+              </li>
+            ))}
+          </motion.ul>
+        )}
+      </AnimatePresence>
+
+      {coords && !compact && showMap && (
+        <div className="border-t border-border">
+          <div ref={mapRef} className="w-full h-44 bg-secondary" aria-label="Delivery location map" />
+          <div className="px-4 py-2 text-[11px] text-muted-foreground bg-background/50 border-t border-border">
+            Drag the pin to refine your exact delivery spot
+          </div>
+        </div>
+      )}
+
       {coords && !compact && (
         <>
           <button
@@ -185,7 +329,17 @@ const LocationBar = ({ onLocationChange, compact }: Props) => {
               {branches.length} nearby branches · delivery from{" "}
               <span className="text-primary">{branches[0]?.etaMin || "—"} min</span>
             </span>
-            <ChevronRight className={`w-4 h-4 transition-transform ${expanded ? "rotate-90" : ""}`} />
+            <div className="flex items-center gap-2">
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={(e) => { e.stopPropagation(); setShowMap((v) => !v); }}
+                className="text-primary font-semibold"
+              >
+                {showMap ? "Hide map" : "Show map"}
+              </span>
+              <ChevronRight className={`w-4 h-4 transition-transform ${expanded ? "rotate-90" : ""}`} />
+            </div>
           </button>
 
           <AnimatePresence initial={false}>
