@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { ShoppingCart, Plus, Minus, Trash2, Award, ArrowLeft, CreditCard, Banknote, QrCode, Smartphone, ChevronRight } from "lucide-react";
+import { ShoppingCart, Plus, Minus, Trash2, Award, ArrowLeft, CreditCard, Banknote, QrCode, Smartphone, ChevronRight, BadgePercent, X } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -26,11 +26,44 @@ const CartDrawer = () => {
   const [step, setStep] = useState<"cart" | "payment">("cart");
   const [selectedPayment, setSelectedPayment] = useState<PaymentMethod>(null);
   const [open, setOpen] = useState(false);
+  const [couponCode, setCouponCode] = useState("");
+  const [applying, setApplying] = useState(false);
+  const [applied, setApplied] = useState<{ id: string; code: string; title: string; discount: number } | null>(null);
   const navigate = useNavigate();
 
-  const basePts = Math.floor(total / 20);
+  const discount = applied ? Math.min(applied.discount, total) : 0;
+  const payable = Math.max(0, total - discount);
+  const basePts = Math.floor(payable / 20);
   const isPremium = !!profile?.is_premium;
   const loyaltyPointsEarned = isPremium ? basePts * 2 : basePts;
+
+  const applyCoupon = async () => {
+    const code = couponCode.trim();
+    if (!code) return;
+    if (!user) { toast.error("Please sign in to use a promo code"); return; }
+    setApplying(true);
+    try {
+      const { data, error } = await supabase.rpc("validate_coupon", { _code: code, _order_total: total });
+      if (error) throw error;
+      const res = data as any;
+      if (!res?.valid) {
+        setApplied(null);
+        toast.error(res?.message || "Invalid promo code");
+        return;
+      }
+      setApplied({ id: res.coupon_id, code: res.code, title: res.title, discount: Number(res.discount) });
+      toast.success(`${res.code} applied — you saved ₹${Number(res.discount)}`);
+    } catch (e: any) {
+      toast.error(e.message || "Could not apply promo code");
+    } finally {
+      setApplying(false);
+    }
+  };
+
+  const removeCoupon = () => {
+    setApplied(null);
+    setCouponCode("");
+  };
 
   const handleProceedToPayment = () => {
     if (!user) {
@@ -49,15 +82,24 @@ const CartDrawer = () => {
     }
     setLoading(true);
     try {
-      const { error } = await supabase.from("orders").insert({
+      const { data: order, error } = await supabase.from("orders").insert({
         user_id: user!.id,
         restaurant_name: restaurantName!,
         items: items.map((i) => ({ name: i.name, qty: i.quantity, price: i.price })),
-        total_amount: total,
+        total_amount: payable,
         loyalty_points_earned: loyaltyPointsEarned,
         status: "confirmed",
-      });
+      }).select("id").single();
       if (error) throw error;
+
+      if (applied) {
+        await supabase.from("coupon_redemptions").insert({
+          user_id: user!.id,
+          coupon_id: applied.id,
+          order_id: order?.id ?? null,
+          discount_amount: discount,
+        });
+      }
 
       const { data: profile } = await supabase.from("profiles").select("loyalty_points, total_orders, total_points_earned").eq("user_id", user!.id).single();
       if (profile) {
@@ -72,6 +114,7 @@ const CartDrawer = () => {
       clearCart();
       setStep("cart");
       setSelectedPayment(null);
+      removeCoupon();
       setOpen(false);
       toast.success(`Order placed via ${paymentMethods.find(p => p.id === selectedPayment)?.label}! You earned ${loyaltyPointsEarned} loyalty points 🎉`);
     } catch (e: any) {
