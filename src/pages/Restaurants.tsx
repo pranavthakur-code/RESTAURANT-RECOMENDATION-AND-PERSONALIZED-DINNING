@@ -3,7 +3,7 @@ import Footer from "@/components/Footer";
 import ChatBot from "@/components/ChatBot";
 import CartDrawer from "@/components/CartDrawer";
 import LocationBar from "@/components/LocationBar";
-import { Search, MapPin, Star, Award, Leaf, Drumstick, Navigation, Crown, Clock, UtensilsCrossed, CalendarCheck, Bike } from "lucide-react";
+import { Search, MapPin, Star, Award, Leaf, Drumstick, Navigation, Crown, Clock, UtensilsCrossed, CalendarCheck, Bike, Heart } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -223,7 +223,7 @@ const Restaurants = () => {
                 const points = Math.max(5, Math.round((r.pricing_for_2 || 200) / 20));
                 return (
                   <motion.div key={r.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i * 0.02, 0.4) }}>
-                    <div className={`group rounded-2xl overflow-hidden bg-card border transition-all hover:-translate-y-1 flex flex-col h-full ${r.premium_only ? "border-loyalty/40" : "border-border hover:border-primary/30"}`}>
+                    <div className={`group relative rounded-2xl overflow-hidden bg-card border transition-all hover:-translate-y-1 flex flex-col h-full ${r.premium_only ? "border-loyalty/40" : "border-border hover:border-primary/30"}`}>
                       <Link to={locked ? "/loyalty" : `/restaurant/${r.slug}`} className="block">
                         <div className="relative h-44 overflow-hidden">
                           <img src={r.image_url || ""} alt={r.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
@@ -250,7 +250,7 @@ const Restaurants = () => {
                       <FavoriteButton
                         active={favorites.has(r.id)}
                         onToggle={() => toggleFavorite(r.id, r.name)}
-                        className="absolute top-3 left-3 z-10"
+                        className="absolute top-12 right-3 z-10"
                       />
                       <div className="p-4 flex flex-col flex-1">
                           <div className="flex items-start justify-between gap-2">
