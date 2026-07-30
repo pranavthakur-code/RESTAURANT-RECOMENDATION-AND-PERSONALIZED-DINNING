@@ -181,16 +181,55 @@ const CartDrawer = () => {
                 </div>
 
                 <SheetFooter className="flex-col gap-3 border-t border-border pt-4">
+                  <div className="w-full">
+                    {applied ? (
+                      <div className="flex items-center justify-between gap-2 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-3 py-2">
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-primary font-mono">{applied.code}</p>
+                          <p className="text-[11px] text-muted-foreground truncate">{applied.title}</p>
+                        </div>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={removeCoupon} aria-label="Remove promo code">
+                          <X className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2">
+                          <BadgePercent className="w-4 h-4 text-primary shrink-0" />
+                          <input
+                            value={couponCode}
+                            onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                            maxLength={24}
+                            placeholder="Promo code"
+                            className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none uppercase"
+                          />
+                        </div>
+                        <Button variant="outline" size="sm" onClick={applyCoupon} disabled={applying || !couponCode.trim()}>
+                          {applying ? "..." : "Apply"}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                   <div className="flex items-center justify-between w-full">
                     <span className="text-muted-foreground">Subtotal</span>
-                    <span className="text-foreground font-bold text-lg">₹{total}</span>
+                    <span className="text-foreground font-medium">₹{total}</span>
+                  </div>
+                  {discount > 0 && (
+                    <div className="flex items-center justify-between w-full text-success">
+                      <span className="text-sm">Discount ({applied?.code})</span>
+                      <span className="font-medium">−₹{discount}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between w-full">
+                    <span className="text-muted-foreground">To pay</span>
+                    <span className="text-foreground font-bold text-lg">₹{payable}</span>
                   </div>
                   <div className="flex items-center gap-1 text-loyalty text-sm font-medium w-full">
                     <Award className="w-4 h-4" />
                     You'll earn {loyaltyPointsEarned} loyalty points
                   </div>
                   <Button className="w-full" variant="hero" size="lg" onClick={handleProceedToPayment}>
-                    Proceed to Payment · ₹{total} <ChevronRight className="w-4 h-4 ml-1" />
+                    Proceed to Payment · ₹{payable} <ChevronRight className="w-4 h-4 ml-1" />
                   </Button>
                 </SheetFooter>
               </>
@@ -229,9 +268,9 @@ const CartDrawer = () => {
 
               {selectedPayment === "phonepe" && (
                 <div className="mt-4 p-4 bg-card border border-border rounded-xl text-center space-y-3">
-                  <p className="text-sm font-medium text-foreground">Scan to pay ₹{total}</p>
+                  <p className="text-sm font-medium text-foreground">Scan to pay ₹{payable}</p>
                   <img src={phonepeQR} alt="PhonePe QR Code" className="w-48 h-48 mx-auto rounded-lg object-contain" />
-                  <p className="text-xs text-muted-foreground">Open PhonePe app → Scan QR → Pay ₹{total}</p>
+                  <p className="text-xs text-muted-foreground">Open PhonePe app → Scan QR → Pay ₹{payable}</p>
                 </div>
               )}
 
@@ -255,9 +294,15 @@ const CartDrawer = () => {
             </div>
 
             <SheetFooter className="flex-col gap-3 border-t border-border pt-4">
+              {discount > 0 && (
+                <div className="flex items-center justify-between w-full text-success text-sm">
+                  <span>Discount ({applied?.code})</span>
+                  <span className="font-medium">−₹{discount}</span>
+                </div>
+              )}
               <div className="flex items-center justify-between w-full">
                 <span className="text-muted-foreground">Total</span>
-                <span className="text-foreground font-bold text-lg">₹{total}</span>
+                <span className="text-foreground font-bold text-lg">₹{payable}</span>
               </div>
               <div className="flex items-center gap-1 text-loyalty text-sm font-medium w-full">
                 <Award className="w-4 h-4" />
@@ -270,7 +315,7 @@ const CartDrawer = () => {
                 onClick={handleCheckout}
                 disabled={loading || !selectedPayment}
               >
-                {loading ? "Placing Order..." : `Pay ₹${total}`}
+                {loading ? "Placing Order..." : `Pay ₹${payable}`}
               </Button>
             </SheetFooter>
           </>

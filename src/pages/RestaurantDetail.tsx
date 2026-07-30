@@ -12,6 +12,9 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import CrowdPredictor from "@/components/CrowdPredictor";
+import ReviewSection from "@/components/ReviewSection";
+import FavoriteButton from "@/components/FavoriteButton";
+import { useFavorites } from "@/hooks/useFavorites";
 
 type Resto = {
   id: string; slug: string; name: string; category: string | null;
@@ -30,6 +33,7 @@ const RestaurantDetail = () => {
   const { slug } = useParams();
   const { addItem } = useCart();
   const { profile } = useAuth();
+  const { favorites, toggleFavorite } = useFavorites();
   const isPremium = !!profile?.is_premium;
   const [restaurant, setRestaurant] = useState<Resto | null>(null);
   const [menu, setMenu] = useState<MenuItem[]>([]);
@@ -106,6 +110,12 @@ const RestaurantDetail = () => {
               {restaurant.premium_only && (
                 <span className="inline-flex items-center gap-1 bg-loyalty text-loyalty-foreground text-xs font-semibold px-2 py-1 rounded-full"><Crown className="w-3 h-3" /> Premium</span>
               )}
+              <FavoriteButton
+                active={favorites.has(restaurant.id)}
+                onToggle={() => toggleFavorite(restaurant.id, restaurant.name)}
+                label
+                className="ml-1"
+              />
             </div>
             <p className="text-muted-foreground mt-1">{restaurant.category}</p>
             <div className="flex flex-wrap items-center gap-4 mt-3 text-sm text-muted-foreground">
@@ -174,6 +184,8 @@ const RestaurantDetail = () => {
           {filteredMenu.length === 0 && (
             <div className="text-center py-12 text-muted-foreground">No items match your filters.</div>
           )}
+
+          <ReviewSection restaurantId={restaurant.id} restaurantName={restaurant.name} />
         </div>
       </div>
       <Footer />
