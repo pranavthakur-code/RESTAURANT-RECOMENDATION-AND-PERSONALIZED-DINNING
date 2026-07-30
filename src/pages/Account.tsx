@@ -3,6 +3,9 @@ import Footer from "@/components/Footer";
 import ChatBot from "@/components/ChatBot";
 import CartDrawer from "@/components/CartDrawer";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCart } from "@/contexts/CartContext";
+import { useFavorites } from "@/hooks/useFavorites";
+import FavoriteButton from "@/components/FavoriteButton";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
@@ -13,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import {
   Package, Clock, CheckCircle, XCircle, Award, EyeOff,
   ChefHat, Bike, MapPin, CalendarDays, Users, Utensils,
-  Pencil, User, MapPin as MapPinIcon, ArrowRight
+  Pencil, User, MapPin as MapPinIcon, ArrowRight, Heart, RotateCcw, Star
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -63,10 +66,14 @@ const statusConfig: Record<string, { icon: React.ReactNode; color: string; label
 
 const Account = () => {
   const { user, profile, refreshProfile } = useAuth();
+  const { addMany } = useCart();
+  const { favorites, toggleFavorite } = useFavorites();
+  const [favRestos, setFavRestos] = useState<any[]>([]);
+  const [reorderingId, setReorderingId] = useState<string | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"all" | "orders" | "bookings">("all");
+  const [tab, setTab] = useState<"all" | "orders" | "bookings" | "favorites">("all");
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(() => {
     try {
       const saved = localStorage.getItem("mealmatch_hidden_orders");
@@ -113,6 +120,60 @@ const Account = () => {
       .eq("user_id", user!.id)
       .order("created_at", { ascending: false });
     if (data) setBookings(data as unknown as Booking[]);
+  };
+
+  useEffect(() => {
+    (async () => {
+      const ids = [...favorites];
+      if (ids.length === 0) { setFavRestos([]); return; }
+      const { data } = await supabase
+        .from("restaurants_db")
+        .select("id, slug, name, category, locality, image_url, dining_rating, pricing_for_2")
+        .in("id", ids);
+      setFavRestos(data || []);
+    })();
+  }, [favorites]);
+
+  const handleReorder = async (order: Order) => {
+    setReorderingId(order.id);
+    try {
+      const { data: resto } = await supabase
+        .from("restaurants_db")
+        .select("id, name")
+        .eq("name", order.restaurant_name)
+        .maybeSingle();
+      if (!resto) { toast.error("This restaurant is no longer available"); return; }
+      const { data: menu } = await supabase
+        .from("menu_items_db")
+        .select("id, name, price, image_url")
+        .eq("restaurant_id", resto.id);
+      const available = menu || [];
+      const missing: string[] = [];
+      const changed: string[] = [];
+      const cartItems = order.items.flatMap((it) => {
+        const match = available.find((m) => m.name.toLowerCase() === it.name.toLowerCase());
+        if (!match) { missing.push(it.name); return []; }
+        if (match.price !== it.price) changed.push(it.name);
+        return [{
+          id: match.id,
+          name: match.name,
+          price: match.price,
+          quantity: it.qty,
+          image: match.image_url || "",
+          restaurantName: resto.name,
+        }];
+      });
+      if (cartItems.length === 0) { toast.error("None of these items are available anymore"); return; }
+      addMany(cartItems);
+      let msg = `${cartItems.length} item${cartItems.length > 1 ? "s" : ""} added to your cart`;
+      if (missing.length) msg += ` · Unavailable: ${missing.join(", ")}`;
+      if (changed.length) msg += ` · Price updated: ${changed.join(", ")}`;
+      toast.success(msg);
+    } catch (e: any) {
+      toast.error(e.message || "Could not reorder");
+    } finally {
+      setReorderingId(null);
+    }
   };
 
   const elapsedMin = (order: Order) =>
@@ -187,16 +248,18 @@ const Account = () => {
   }, [user]);
 
   const recalcPoints = async () => {
-    const [ordersRes, bookingsRes, redemptionsRes] = await Promise.all([
+    const [ordersRes, bookingsRes, redemptionsRes, reviewsRes] = await Promise.all([
       supabase.from("orders").select("loyalty_points_earned, status").eq("user_id", user!.id),
       supabase.from("bookings").select("loyalty_points_earned, status").eq("user_id", user!.id),
       supabase.from("redemptions").select("id, points_spent, reward_name, created_at").eq("user_id", user!.id).order("created_at", { ascending: false }),
+      supabase.from("reviews").select("id", { count: "exact", head: true }).eq("user_id", user!.id),
     ]);
     const activeOrderPoints = (ordersRes.data || []).filter((o) => o.status !== "cancelled").reduce((s, o) => s + o.loyalty_points_earned, 0);
     const activeOrderCount = (ordersRes.data || []).filter((o) => o.status !== "cancelled").length;
     const activeBookingPoints = (bookingsRes.data || []).filter((b) => b.status !== "cancelled").reduce((s, b) => s + b.loyalty_points_earned, 0);
     const activeBookingCount = (bookingsRes.data || []).filter((b) => b.status !== "cancelled").length;
-    const totalEarned = 50 + activeOrderPoints + activeBookingPoints;
+    const reviewPoints = (reviewsRes.count || 0) * 10;
+    const totalEarned = 50 + activeOrderPoints + activeBookingPoints + reviewPoints;
     const redemptions = redemptionsRes.data || [];
     let totalRedeemed = redemptions.reduce((s, r) => s + r.points_spent, 0);
     const reversed: string[] = [];
