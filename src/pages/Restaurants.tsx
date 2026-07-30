@@ -3,7 +3,7 @@ import Footer from "@/components/Footer";
 import ChatBot from "@/components/ChatBot";
 import CartDrawer from "@/components/CartDrawer";
 import LocationBar from "@/components/LocationBar";
-import { Search, MapPin, Star, Award, Leaf, Drumstick, Navigation, Crown, Clock, UtensilsCrossed, CalendarCheck, Bike } from "lucide-react";
+import { Search, MapPin, Star, Award, Leaf, Drumstick, Navigation, Crown, Clock, UtensilsCrossed, CalendarCheck, Bike, Heart } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,6 +12,9 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import BookingDialog from "@/components/BookingDialog";
 import { Slider } from "@/components/ui/slider";
+import OffersStrip from "@/components/OffersStrip";
+import FavoriteButton from "@/components/FavoriteButton";
+import { useFavorites } from "@/hooks/useFavorites";
 
 type Resto = {
   id: string;
@@ -57,6 +60,7 @@ const Restaurants = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { profile } = useAuth();
+  const { favorites, toggleFavorite } = useFavorites();
   const isPremium = !!profile?.is_premium;
   const userCity = profile?.location || "";
   const [search, setSearch] = useState(searchParams.get("search") || "");
@@ -70,6 +74,7 @@ const Restaurants = () => {
   const [radiusOn, setRadiusOn] = useState<boolean>(true);
   const [bookingOpen, setBookingOpen] = useState(false);
   const [bookingVenue, setBookingVenue] = useState<{ name: string; type: string; location: string; points: number } | null>(null);
+  const [favOnly, setFavOnly] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -95,6 +100,7 @@ const Restaurants = () => {
       const cls = classifyResto(r.category);
       const matchDiet = diet === "all" || (diet === "veg" ? cls.pureVeg : cls.hasNonVeg);
       const matchPremium = !premiumOnly || r.premium_only;
+      const matchFav = !favOnly || favorites.has(r.id);
       let matchRadius = true;
       if (radiusOn && userLoc) {
         if (r.latitude == null || r.longitude == null) {
@@ -104,9 +110,9 @@ const Restaurants = () => {
           matchRadius = d <= radiusKm;
         }
       }
-      return matchSearch && matchLoc && matchDiet && matchPremium && matchRadius;
+      return matchSearch && matchLoc && matchDiet && matchPremium && matchFav && matchRadius;
     });
-  }, [restos, search, locationFilter, diet, premiumOnly, radiusOn, radiusKm, userLoc]);
+  }, [restos, search, locationFilter, diet, premiumOnly, favOnly, favorites, radiusOn, radiusKm, userLoc]);
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
@@ -133,6 +139,8 @@ const Restaurants = () => {
             <LocationBar onLocationChange={(l) => setUserLoc({ lat: l.lat, lng: l.lng })} />
           </div>
 
+          <OffersStrip />
+
           <div className="flex flex-col sm:flex-row gap-3 mb-4">
             <div className="flex-1 flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-3">
               <MapPin className="w-5 h-5 text-primary shrink-0" />
@@ -154,6 +162,9 @@ const Restaurants = () => {
             </Button>
             <Button size="sm" variant={premiumOnly ? "default" : "secondary"} onClick={() => setPremiumOnly((v) => !v)}>
               <Crown className="w-3.5 h-3.5 mr-1" /> Premium {isPremium ? "" : "(Members)"}
+            </Button>
+            <Button size="sm" variant={favOnly ? "default" : "secondary"} onClick={() => setFavOnly((v) => !v)}>
+              <Heart className={`w-3.5 h-3.5 mr-1 ${favOnly ? "fill-current" : ""}`} /> Favourites
             </Button>
             <Button size="sm" variant="outline" onClick={requestLocation}>
               <Navigation className="w-3.5 h-3.5 mr-1" /> {userLoc ? "Using your location" : "Use my location"}
@@ -212,7 +223,7 @@ const Restaurants = () => {
                 const points = Math.max(5, Math.round((r.pricing_for_2 || 200) / 20));
                 return (
                   <motion.div key={r.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i * 0.02, 0.4) }}>
-                    <div className={`group rounded-2xl overflow-hidden bg-card border transition-all hover:-translate-y-1 flex flex-col h-full ${r.premium_only ? "border-loyalty/40" : "border-border hover:border-primary/30"}`}>
+                    <div className={`group relative rounded-2xl overflow-hidden bg-card border transition-all hover:-translate-y-1 flex flex-col h-full ${r.premium_only ? "border-loyalty/40" : "border-border hover:border-primary/30"}`}>
                       <Link to={locked ? "/loyalty" : `/restaurant/${r.slug}`} className="block">
                         <div className="relative h-44 overflow-hidden">
                           <img src={r.image_url || ""} alt={r.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
@@ -236,6 +247,11 @@ const Restaurants = () => {
                           </div>
                         </div>
                       </Link>
+                      <FavoriteButton
+                        active={favorites.has(r.id)}
+                        onToggle={() => toggleFavorite(r.id, r.name)}
+                        className="absolute top-12 right-3 z-10"
+                      />
                       <div className="p-4 flex flex-col flex-1">
                           <div className="flex items-start justify-between gap-2">
                             <h3 className="font-display font-semibold text-foreground line-clamp-1">{r.name}</h3>

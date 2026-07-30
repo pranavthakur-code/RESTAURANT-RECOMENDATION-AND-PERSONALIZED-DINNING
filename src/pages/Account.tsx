@@ -3,6 +3,9 @@ import Footer from "@/components/Footer";
 import ChatBot from "@/components/ChatBot";
 import CartDrawer from "@/components/CartDrawer";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCart } from "@/contexts/CartContext";
+import { useFavorites } from "@/hooks/useFavorites";
+import FavoriteButton from "@/components/FavoriteButton";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
@@ -13,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import {
   Package, Clock, CheckCircle, XCircle, Award, EyeOff,
   ChefHat, Bike, MapPin, CalendarDays, Users, Utensils,
-  Pencil, User, MapPin as MapPinIcon, ArrowRight
+  Pencil, User, MapPin as MapPinIcon, ArrowRight, Heart, RotateCcw, Star
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -63,10 +66,14 @@ const statusConfig: Record<string, { icon: React.ReactNode; color: string; label
 
 const Account = () => {
   const { user, profile, refreshProfile } = useAuth();
+  const { addMany } = useCart();
+  const { favorites, toggleFavorite } = useFavorites();
+  const [favRestos, setFavRestos] = useState<any[]>([]);
+  const [reorderingId, setReorderingId] = useState<string | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"all" | "orders" | "bookings">("all");
+  const [tab, setTab] = useState<"all" | "orders" | "bookings" | "favorites">("all");
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(() => {
     try {
       const saved = localStorage.getItem("mealmatch_hidden_orders");
@@ -113,6 +120,60 @@ const Account = () => {
       .eq("user_id", user!.id)
       .order("created_at", { ascending: false });
     if (data) setBookings(data as unknown as Booking[]);
+  };
+
+  useEffect(() => {
+    (async () => {
+      const ids = [...favorites];
+      if (ids.length === 0) { setFavRestos([]); return; }
+      const { data } = await supabase
+        .from("restaurants_db")
+        .select("id, slug, name, category, locality, image_url, dining_rating, pricing_for_2")
+        .in("id", ids);
+      setFavRestos(data || []);
+    })();
+  }, [favorites]);
+
+  const handleReorder = async (order: Order) => {
+    setReorderingId(order.id);
+    try {
+      const { data: resto } = await supabase
+        .from("restaurants_db")
+        .select("id, name")
+        .eq("name", order.restaurant_name)
+        .maybeSingle();
+      if (!resto) { toast.error("This restaurant is no longer available"); return; }
+      const { data: menu } = await supabase
+        .from("menu_items_db")
+        .select("id, name, price, image_url")
+        .eq("restaurant_id", resto.id);
+      const available = menu || [];
+      const missing: string[] = [];
+      const changed: string[] = [];
+      const cartItems = order.items.flatMap((it) => {
+        const match = available.find((m) => m.name.toLowerCase() === it.name.toLowerCase());
+        if (!match) { missing.push(it.name); return []; }
+        if (match.price !== it.price) changed.push(it.name);
+        return [{
+          id: match.id,
+          name: match.name,
+          price: match.price,
+          quantity: it.qty,
+          image: match.image_url || "",
+          restaurantName: resto.name,
+        }];
+      });
+      if (cartItems.length === 0) { toast.error("None of these items are available anymore"); return; }
+      addMany(cartItems);
+      let msg = `${cartItems.length} item${cartItems.length > 1 ? "s" : ""} added to your cart`;
+      if (missing.length) msg += ` · Unavailable: ${missing.join(", ")}`;
+      if (changed.length) msg += ` · Price updated: ${changed.join(", ")}`;
+      toast.success(msg);
+    } catch (e: any) {
+      toast.error(e.message || "Could not reorder");
+    } finally {
+      setReorderingId(null);
+    }
   };
 
   const elapsedMin = (order: Order) =>
@@ -187,16 +248,18 @@ const Account = () => {
   }, [user]);
 
   const recalcPoints = async () => {
-    const [ordersRes, bookingsRes, redemptionsRes] = await Promise.all([
+    const [ordersRes, bookingsRes, redemptionsRes, reviewsRes] = await Promise.all([
       supabase.from("orders").select("loyalty_points_earned, status").eq("user_id", user!.id),
       supabase.from("bookings").select("loyalty_points_earned, status").eq("user_id", user!.id),
       supabase.from("redemptions").select("id, points_spent, reward_name, created_at").eq("user_id", user!.id).order("created_at", { ascending: false }),
+      supabase.from("reviews").select("id", { count: "exact", head: true }).eq("user_id", user!.id),
     ]);
     const activeOrderPoints = (ordersRes.data || []).filter((o) => o.status !== "cancelled").reduce((s, o) => s + o.loyalty_points_earned, 0);
     const activeOrderCount = (ordersRes.data || []).filter((o) => o.status !== "cancelled").length;
     const activeBookingPoints = (bookingsRes.data || []).filter((b) => b.status !== "cancelled").reduce((s, b) => s + b.loyalty_points_earned, 0);
     const activeBookingCount = (bookingsRes.data || []).filter((b) => b.status !== "cancelled").length;
-    const totalEarned = 50 + activeOrderPoints + activeBookingPoints;
+    const reviewPoints = (reviewsRes.count || 0) * 10;
+    const totalEarned = 50 + activeOrderPoints + activeBookingPoints + reviewPoints;
     const redemptions = redemptionsRes.data || [];
     let totalRedeemed = redemptions.reduce((s, r) => s + r.points_spent, 0);
     const reversed: string[] = [];
@@ -359,7 +422,7 @@ const Account = () => {
 
           {/* Tabs */}
           <div className="flex items-center gap-2 mb-6">
-            {(["all", "orders", "bookings"] as const).map((t) => (
+            {(["all", "orders", "bookings", "favorites"] as const).map((t) => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
@@ -369,15 +432,53 @@ const Account = () => {
                     : "text-muted-foreground hover:text-foreground hover:bg-secondary border border-transparent"
                 }`}
               >
-                {t === "all" ? "All Activity" : t === "orders" ? "Food Orders" : "DineOut Bookings"}
+                {t === "all" ? "All Activity" : t === "orders" ? "Food Orders" : t === "bookings" ? "DineOut Bookings" : "Favourites"}
                 <span className="ml-1.5 text-xs opacity-70">
-                  {t === "all" ? allActivity.length : t === "orders" ? visibleOrders.length : bookings.length}
+                  {t === "all" ? allActivity.length : t === "orders" ? visibleOrders.length : t === "bookings" ? bookings.length : favRestos.length}
                 </span>
               </button>
             ))}
           </div>
 
-          {loading ? (
+          {tab === "favorites" ? (
+            favRestos.length === 0 ? (
+              <div className="text-center py-20">
+                <Heart className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground mb-4">No favourites saved yet</p>
+                <Link to="/restaurants"><Button variant="hero" size="sm">Browse restaurants</Button></Link>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {favRestos.map((r) => (
+                  <div key={r.id} className="relative rounded-2xl overflow-hidden bg-card border border-border">
+                    <Link to={`/restaurant/${r.slug}`}>
+                      <div className="h-36 overflow-hidden">
+                        <img src={r.image_url || ""} alt={r.name} className="w-full h-full object-cover" />
+                      </div>
+                    </Link>
+                    <FavoriteButton
+                      active
+                      onToggle={() => toggleFavorite(r.id, r.name)}
+                      className="absolute top-3 right-3 z-10"
+                    />
+                    <div className="p-4">
+                      <h3 className="font-display font-semibold text-foreground line-clamp-1">{r.name}</h3>
+                      <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{r.category}</p>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2">
+                        {r.dining_rating != null && (
+                          <span className="flex items-center gap-1"><Star className="w-3 h-3 text-loyalty fill-loyalty" /> {Number(r.dining_rating).toFixed(1)}</span>
+                        )}
+                        <span className="flex items-center gap-1"><MapPinIcon className="w-3 h-3" /> {r.locality}</span>
+                      </div>
+                      <Link to={`/restaurant/${r.slug}`}>
+                        <Button size="sm" className="w-full mt-3"><Bike className="w-3.5 h-3.5 mr-1" /> Order Food</Button>
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          ) : loading ? (
             <div className="text-center py-20 text-muted-foreground">Loading your activity...</div>
           ) : filtered.length === 0 ? (
             <div className="text-center py-20">
@@ -431,6 +532,15 @@ const Account = () => {
                             onClick={() => hideOrder(order.id)}
                           >
                             <EyeOff className="w-4 h-4 mr-1" /> Hide
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleReorder(order)}
+                            disabled={reorderingId === order.id}
+                          >
+                            <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                            {reorderingId === order.id ? "Adding..." : "Reorder"}
                           </Button>
                         </div>
                       </div>

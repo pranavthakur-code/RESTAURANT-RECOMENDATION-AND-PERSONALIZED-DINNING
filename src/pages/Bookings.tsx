@@ -54,16 +54,18 @@ const Bookings = () => {
   };
 
   const recalcPoints = async () => {
-    const [ordersRes, bookingsRes, redemptionsRes] = await Promise.all([
+    const [ordersRes, bookingsRes, redemptionsRes, reviewsRes] = await Promise.all([
       supabase.from("orders").select("loyalty_points_earned, status").eq("user_id", user!.id),
       supabase.from("bookings").select("loyalty_points_earned, status").eq("user_id", user!.id),
       supabase.from("redemptions").select("id, points_spent, reward_name, created_at").eq("user_id", user!.id).order("created_at", { ascending: false }),
+      supabase.from("reviews").select("id", { count: "exact", head: true }).eq("user_id", user!.id),
     ]);
     const activeOrderPoints = (ordersRes.data || []).filter((o) => o.status !== "cancelled").reduce((s, o) => s + o.loyalty_points_earned, 0);
     const activeOrderCount = (ordersRes.data || []).filter((o) => o.status !== "cancelled").length;
     const activeBookingPoints = (bookingsRes.data || []).filter((b) => b.status !== "cancelled").reduce((s, b) => s + b.loyalty_points_earned, 0);
     const activeBookingCount = (bookingsRes.data || []).filter((b) => b.status !== "cancelled").length;
-    const totalEarned = 50 + activeOrderPoints + activeBookingPoints;
+    const reviewPoints = (reviewsRes.count || 0) * 10;
+    const totalEarned = 50 + activeOrderPoints + activeBookingPoints + reviewPoints;
 
     const redemptions = redemptionsRes.data || [];
     let totalRedeemed = redemptions.reduce((s, r) => s + r.points_spent, 0);

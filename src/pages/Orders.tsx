@@ -168,10 +168,11 @@ const Orders = () => {
       if (error) throw error;
 
       // Recalculate points from scratch: 50 (signup) + active order points + active booking points - redemptions
-      const [ordersRes, bookingsRes, redemptionsRes] = await Promise.all([
+      const [ordersRes, bookingsRes, redemptionsRes, reviewsRes] = await Promise.all([
         supabase.from("orders").select("loyalty_points_earned, status").eq("user_id", user!.id),
         supabase.from("bookings").select("loyalty_points_earned, status").eq("user_id", user!.id),
         supabase.from("redemptions").select("id, points_spent, reward_name, created_at").eq("user_id", user!.id).order("created_at", { ascending: false }),
+        supabase.from("reviews").select("id", { count: "exact", head: true }).eq("user_id", user!.id),
       ]);
 
       const activeOrderPoints = (ordersRes.data || [])
@@ -185,7 +186,8 @@ const Orders = () => {
       const activeBookingCount = (bookingsRes.data || []).filter((b) => b.status !== "cancelled").length;
 
       const signupBonus = 50;
-      const totalEarned = signupBonus + activeOrderPoints + activeBookingPoints;
+      const reviewPoints = (reviewsRes.count || 0) * 10;
+      const totalEarned = signupBonus + activeOrderPoints + activeBookingPoints + reviewPoints;
 
       // Auto-reverse redemptions if earned points can no longer cover them (newest first)
       const redemptions = redemptionsRes.data || [];
