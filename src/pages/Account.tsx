@@ -422,7 +422,7 @@ const Account = () => {
 
           {/* Tabs */}
           <div className="flex items-center gap-2 mb-6">
-            {(["all", "orders", "bookings"] as const).map((t) => (
+            {(["all", "orders", "bookings", "favorites"] as const).map((t) => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
@@ -432,15 +432,53 @@ const Account = () => {
                     : "text-muted-foreground hover:text-foreground hover:bg-secondary border border-transparent"
                 }`}
               >
-                {t === "all" ? "All Activity" : t === "orders" ? "Food Orders" : "DineOut Bookings"}
+                {t === "all" ? "All Activity" : t === "orders" ? "Food Orders" : t === "bookings" ? "DineOut Bookings" : "Favourites"}
                 <span className="ml-1.5 text-xs opacity-70">
-                  {t === "all" ? allActivity.length : t === "orders" ? visibleOrders.length : bookings.length}
+                  {t === "all" ? allActivity.length : t === "orders" ? visibleOrders.length : t === "bookings" ? bookings.length : favRestos.length}
                 </span>
               </button>
             ))}
           </div>
 
-          {loading ? (
+          {tab === "favorites" ? (
+            favRestos.length === 0 ? (
+              <div className="text-center py-20">
+                <Heart className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground mb-4">No favourites saved yet</p>
+                <Link to="/restaurants"><Button variant="hero" size="sm">Browse restaurants</Button></Link>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {favRestos.map((r) => (
+                  <div key={r.id} className="relative rounded-2xl overflow-hidden bg-card border border-border">
+                    <Link to={`/restaurant/${r.slug}`}>
+                      <div className="h-36 overflow-hidden">
+                        <img src={r.image_url || ""} alt={r.name} className="w-full h-full object-cover" />
+                      </div>
+                    </Link>
+                    <FavoriteButton
+                      active
+                      onToggle={() => toggleFavorite(r.id, r.name)}
+                      className="absolute top-3 right-3 z-10"
+                    />
+                    <div className="p-4">
+                      <h3 className="font-display font-semibold text-foreground line-clamp-1">{r.name}</h3>
+                      <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{r.category}</p>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2">
+                        {r.dining_rating != null && (
+                          <span className="flex items-center gap-1"><Star className="w-3 h-3 text-loyalty fill-loyalty" /> {Number(r.dining_rating).toFixed(1)}</span>
+                        )}
+                        <span className="flex items-center gap-1"><MapPinIcon className="w-3 h-3" /> {r.locality}</span>
+                      </div>
+                      <Link to={`/restaurant/${r.slug}`}>
+                        <Button size="sm" className="w-full mt-3"><Bike className="w-3.5 h-3.5 mr-1" /> Order Food</Button>
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          ) : loading ? (
             <div className="text-center py-20 text-muted-foreground">Loading your activity...</div>
           ) : filtered.length === 0 ? (
             <div className="text-center py-20">
@@ -494,6 +532,15 @@ const Account = () => {
                             onClick={() => hideOrder(order.id)}
                           >
                             <EyeOff className="w-4 h-4 mr-1" /> Hide
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleReorder(order)}
+                            disabled={reorderingId === order.id}
+                          >
+                            <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                            {reorderingId === order.id ? "Adding..." : "Reorder"}
                           </Button>
                         </div>
                       </div>
