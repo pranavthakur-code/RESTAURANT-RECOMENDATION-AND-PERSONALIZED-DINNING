@@ -1,0 +1,1 @@
+Homepage restaurant listings read from `restaurants_db` so their slugs resolve against the same catalog used by restaurant detail pages.
