@@ -41,13 +41,34 @@ const ReviewSection = ({ restaurantId, restaurantName }: { restaurantId: string;
   const [hasOrdered, setHasOrdered] = useState(false);
 
   const load = useCallback(async () => {
-    const { data } = await supabase
-      .from("reviews")
-      .select("id, user_id, rating, comment, user_name, created_at")
+    const publicReviewsRequest = supabase
+      .from("public_reviews")
+      .select("id, restaurant_id, rating, comment, user_name, created_at")
       .eq("restaurant_id", restaurantId)
       .order("created_at", { ascending: false });
-    setReviews((data as Review[]) || []);
-  }, [restaurantId]);
+    const ownReviewRequest = user
+      ? supabase
+          .from("reviews")
+          .select("id, user_id, rating, comment, user_name, created_at")
+          .eq("restaurant_id", restaurantId)
+          .eq("user_id", user.id)
+          .maybeSingle()
+      : Promise.resolve({ data: null });
+
+    const [{ data: publicData }, { data: ownData }] = await Promise.all([
+      publicReviewsRequest,
+      ownReviewRequest,
+    ]);
+    const visibleReviews = (publicData || []).map((review) => ({
+      ...review,
+      user_id: "",
+      created_at: review.created_at || "",
+    })) as Review[];
+    const reviewsWithoutOwn = ownData
+      ? visibleReviews.filter((review) => review.id !== ownData.id)
+      : visibleReviews;
+    setReviews(ownData ? [ownData as Review, ...reviewsWithoutOwn] : reviewsWithoutOwn);
+  }, [restaurantId, user]);
 
   useEffect(() => { load(); }, [load]);
 
